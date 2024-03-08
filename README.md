@@ -1,1 +1,1 @@
-# Signal-Proprocessor-for-EEG
+# Signal-Preprocessor-for-EEG
