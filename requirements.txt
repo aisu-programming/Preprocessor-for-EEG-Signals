@@ -1,0 +1,5 @@
+python-dotenv
+mne
+scikit-learn
+matplotlib
+tensorflow==2.5
