@@ -1,0 +1,3 @@
+[submodule ".\\arl_eegmodels\\"]
+	path = .\\arl_eegmodels\\
+	url = https://github.com/vlawhern/arl-eegmodels
