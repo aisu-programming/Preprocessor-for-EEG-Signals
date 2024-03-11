@@ -9,6 +9,7 @@ import numpy as np
 from tqdm import tqdm
 from typing import Literal, List, Dict
 
+from pathlib import Path
 
 
 
@@ -44,7 +45,9 @@ class Dataset():
             for sub_id, te in pbar:
                 pbar.set_description(f"Loading BCIC IV 2a dataset - A0{sub_id}{te}")
 
-                gdf_path = os.environ["DATASET_DIR"] + f"\BCI Competition IV 2a\A0{sub_id}{te}.gdf"
+
+                gdf_path = Path(os.environ["DATASET_DIR"]) / "BCI Competition IV 2a" / f"A0{sub_id}{te}.gdf"
+                # gdf_path = os.environ["DATASET_DIR"] + f"\BCI Competition IV 2a\A0{sub_id}{te}.gdf"
                 raw: mne.io.edf.edf.RawGDF = mne.io.read_raw_gdf(gdf_path, preload=True, verbose=0)
 
                 if l_freq == -np.Inf: l_freq = raw.info["highpass"]
@@ -84,8 +87,9 @@ class Dataset():
                     else:
                         self.labels[f"A0{sub_id}T"] = epochs.events[:, -1] - 7
                 else:
-                    mat_path = os.environ["DATASET_DIR"] + f"\BCI Competition IV 2a\A0{sub_id}E.mat"
-                    self.labels[f"A0{sub_id}E"] = scipy.io.loadmat(mat_path)["classlabel"].flatten() - 1
+                    mat_path = Path(os.environ["DATASET_DIR"]) / "BCI Competition IV 2a" / f"A0{sub_id}E.mat"
+                    # mat_path = os.environ["DATASET_DIR"] + f"\BCI Competition IV 2a\A0{sub_id}E.mat"
+                    self.labels[f"A0{sub_id}E"] = scipy.io.loadmat(str(mat_path))["classlabel"].flatten() - 1
 
 
 

@@ -33,7 +33,8 @@ class RecordLearningRate(tf.keras.callbacks.Callback):
 ##### Functions #####
 def backup_files(args: argparse.Namespace) -> None:
     os.makedirs(args.save_path)
-    filename = __file__.split("\\")[-1]
+    # filename = __file__.split("\\")[-1]
+    filename = os.path.split(__file__)[1] # get file tail
     shutil.copy(__file__, f"{args.save_path}/{filename}")
     shutil.copy("utils.py", f"{args.save_path}/utils.py")
     with open(f"{args.save_path}/args.txt", 'w') as record_txt:
