@@ -1,7 +1,7 @@
 import mne
 import matplotlib.pyplot as plt
 
-gdf_path = "datasets\BCI Competition IV 2a\A01E.gdf"
+gdf_path = "datasets\BCI Competition IV 2a\A04T.gdf"
 raw: mne.io.edf.edf.RawGDF = mne.io.read_raw_gdf(gdf_path, preload=True)
 # print(raw.ch_names)
 # raw.load_data()

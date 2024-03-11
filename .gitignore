@@ -1,6 +1,7 @@
+venv*
+*.pyc
+
 .env
 
 datasets
-
 tmp
-venv*
