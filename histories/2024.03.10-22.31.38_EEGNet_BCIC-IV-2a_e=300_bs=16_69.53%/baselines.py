@@ -31,7 +31,7 @@ class RecordLearningRate(tf.keras.callbacks.Callback):
 
 
 ##### Functions #####
-def backup_files(args: argparse.Namespace) -> None:
+def record_history(args: argparse.Namespace) -> None:
     os.makedirs(args.save_path)
     filename = __file__.split("\\")[-1]
     shutil.copy(__file__, f"{args.save_path}/{filename}")
@@ -99,9 +99,9 @@ def baseline_EEGNet(
     # print(X_all.shape, y_all.shape)
 
     X_train, X_val, y_train, y_val = \
-        train_test_split(X_all, y_all, test_size=0.2, random_state=1, shuffle=True)
+        train_test_split(X_all, y_all, test_size=0.2, random_state=0, shuffle=True)
     X_train = np.reshape(X_train, [*X_train.shape, 1])
-    X_val   = np.reshape(X_val,   [*X_val.shape,   1])
+    X_val   = np.reshape(X_val,  [*X_val.shape,  1])
     y_train = utils.to_categorical(y_train)
     y_val   = utils.to_categorical(y_val)
     # print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
@@ -123,9 +123,6 @@ def baseline_EEGNet(
                             callbacks=[ RecordLearningRate() ])
     plot_history(history.history, f"{save_path}/history_plot.png", save_plot, show_plot)
 
-    best_acc_val = max(history.history["val_accuracy"]) * 100
-    os.rename(save_path, f"{save_path}_{best_acc_val:.2f}%")
-
 
 
 
@@ -145,11 +142,11 @@ if __name__ == "__main__":
         help="The dataset used for training."
     )
     parser.add_argument(
-        "-e", "--epochs", type=int, default=350,
+        "-e", "--epochs", type=int, default=300,
         help="The total epochs (iterations) of training."
     )
     parser.add_argument(
-        "-bs", "--batch_size", type=int, default=8,
+        "-bs", "--batch_size", type=int, default=16,
         help="The batch size of training input."
     )
     parser.add_argument(
@@ -157,7 +154,7 @@ if __name__ == "__main__":
         help="The initial learning rate of the optimizer for training."
     )
     parser.add_argument(
-        "-ds", "--decay_steps", type=int, default=2000,
+        "-ds", "--decay_steps", type=int, default=1200,
         help="The decay step of the optimizer for training."
     )
     parser.add_argument(
@@ -181,9 +178,9 @@ if __name__ == "__main__":
     if args.save_path is None:
         args.save_path =  default_save_path_pre
         args.save_path += f"_{args.model}_{args.dataset}"
-        args.save_path += f"_bs={args.batch_size}"
+        args.save_path += f"_e={args.epochs}_bs={args.batch_size}"
 
-    backup_files(args)
+    record_history(args)
 
     if args.model == "EEGNet":
         baseline_EEGNet(

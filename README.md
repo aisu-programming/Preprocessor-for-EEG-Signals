@@ -6,7 +6,8 @@
 - [Slide](https://docs.google.com/presentation/d/1a-_5RynrPjn3GtYHO_E8XeGg9G7NTmGgocn0C2NYVrA/edit?usp=sharing)
 
 ## Tutorial
-1. Clone this project by: `git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git`.
+1. Clone this project by: <br>
+   `git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git`.
 2. Download the above datasets and put them in directory "_datasets_".
 3. Rename the file "_.env_sample_" to "_.env_".
 
