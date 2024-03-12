@@ -7,8 +7,8 @@
 
 ## Tutorial
 1. Clone this project by: <br>
-   ```
-   git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git
+   ```sh
+   $ git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git
    ```
 2. Download the datasets below and put them in directory "_datasets_".
 3. Rename the file "_.env_sample_" to "_.env_".
@@ -20,8 +20,8 @@
 
 ## Environment
 - With pip:
-  ```
-  pip install -r requirements.txt
+  ```sh
+  $ pip install -r requirements.txt
   ```
 - Can also use conda. <br>
 - ~~Must use Python <= 3.9 because of tensorflow.~~
