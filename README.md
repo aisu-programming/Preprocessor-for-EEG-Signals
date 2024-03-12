@@ -25,12 +25,13 @@
   ```
 - Can also use conda. <br>
 - ~~Must use Python <= 3.9 because of tensorflow.~~
-  > [!TIP]
-  > When running MacOS on Apple Silicon, also install `tensorflow-metal` to utilize GPU usage:
-  > ```sh
-  > $ pip install tensorflow-metal
-  > ```
-  > You'll want to run with a higher batch size to get the benefits.
+
+> [!TIP]
+> When running MacOS on Apple Silicon, also install `tensorflow-metal` to utilize GPU usage:
+> ```sh
+> $ pip install tensorflow-metal
+> ```
+> You'll want to run with a higher batch size to get the benefits.
 
 ## Example
 Here's how you can run _baselines.py_ from your shell:
