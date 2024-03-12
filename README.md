@@ -32,7 +32,7 @@
   pip install -r requirements.txt
   ```
 - Can also use conda. <br>
-- ~~Must use Python <= 3.9 because of tensorflow.~~
+- Must use Python <= 3.9 because of tensorflow.
 
 > [!TIP]
 > When running MacOS on Apple Silicon, also install `tensorflow-metal` to utilize GPU usage:
