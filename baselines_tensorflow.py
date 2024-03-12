@@ -3,17 +3,17 @@ import dotenv
 dotenv.load_dotenv(".env")
 import os
 import time
+import utils
 import shutil
 import argparse
 import numpy as np
 import tensorflow as tf
+import models_tensorflow.EEGModels
 import matplotlib.pyplot as plt
 from typing import Dict, Literal
-from utils import BcicIv2aDataset
-from tensorflow.keras import utils
 from tensorflow.keras import backend
+from tensorflow.keras import utils as tf_utils
 backend.set_image_data_format("channels_last")
-from models_tensorflow.EEGModels import EEGNet
 from sklearn.model_selection import train_test_split
 
 
@@ -36,7 +36,8 @@ class RecordLearningRate(tf.keras.callbacks.Callback):
 def backup_files(args: argparse.Namespace) -> None:
     os.makedirs(args.save_dir)
     shutil.copy(__file__, args.save_dir)
-    shutil.copy("utils.py", args.save_dir)
+    shutil.copy(utils.__file__, args.save_dir)
+    shutil.copy(models_tensorflow.EEGModels.__file__, args.save_dir)
     with open(f"{args.save_dir}/args.txt", 'w') as record_txt:
         for key, value in args._get_kwargs():
             record_txt.write(f"{key}={value}\n")
@@ -93,7 +94,7 @@ def baseline_EEGNet(
     assert dataset in ["BCIC-IV-2a"], "Invalid value for parameter 'dataset'."
 
     if dataset == "BCIC-IV-2a":
-        dataset = BcicIv2aDataset()  # l_freq=4
+        dataset = utils.BcicIv2aDataset()  # l_freq=4
 
     X_all = np.concatenate([ v for v in dataset.data.values()   ], axis=0)
     y_all = np.concatenate([ v for v in dataset.labels.values() ], axis=0)
@@ -103,12 +104,14 @@ def baseline_EEGNet(
         train_test_split(X_all, y_all, test_size=0.2, random_state=1, shuffle=True)
     X_train = np.reshape(X_train, [*X_train.shape, 1])
     X_val   = np.reshape(X_val,   [*X_val.shape,   1])
-    y_train = utils.to_categorical(y_train)
-    y_val   = utils.to_categorical(y_val)
+    y_train = tf_utils.to_categorical(y_train)
+    y_val   = tf_utils.to_categorical(y_val)
     # print(X_train.shape, y_train.shape, X_test.shape, y_test.shape)
 
-    model_8_2 = EEGNet(nb_classes=4, Chans=X_train.shape[1], Samples=X_train.shape[2],
-                       dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16, dropoutType="Dropout")
+    model_8_2 = models_tensorflow.EEGModels.EEGNet(
+                    nb_classes=4, Chans=X_train.shape[1], Samples=X_train.shape[2],
+                    dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
+                    dropoutType="Dropout")
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=initial_learning_rate,
         decay_steps=decay_steps,
