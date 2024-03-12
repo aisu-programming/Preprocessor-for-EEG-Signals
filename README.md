@@ -3,7 +3,7 @@
 ## Resource
 - [BrainStorming](https://hackmd.io/Z5uL78LPQxOmcMfXGpx-yg)
 - [Reading List](https://hackmd.io/I66tk7x0QZSzLT109ARyyA)
-- [Slide](https://docs.google.com/presentation/d/1a-_5RynrPjn3GtYHO_E8XeGg9G7NTmGgocn0C2NYVrA/edit?usp=sharing)
+- [Google Slide](https://docs.google.com/presentation/d/1a-_5RynrPjn3GtYHO_E8XeGg9G7NTmGgocn0C2NYVrA/edit?usp=sharing)
 
 ## Tutorial
 1. Clone this project.
@@ -30,6 +30,7 @@
 - With pip:
   ```sh
   pip install -r requirements.txt
+  pip install torch  # Based on your environment, see more in the requirements.txt
   ```
 - Can also use conda. <br>
 
@@ -41,12 +42,17 @@
 > You'll want to run with a higher batch size to get the benefits.
 
 ## Example: Baselines
-Here's how you can run _baselines_tensorflow.py_ from your shell:
-1. If you are working on a Mac platform, set __TF_USE_LEGACY_KERAS__ to True.
-   ```sh
-   export TF_USE_LEGACY_KERAS=True
-   ```
-2. Run the script.
-   ```sh
-   python3 _baselines_tensorflow.py
-   ```
+- For baseline program in TensorFlow version - _baselines_tensorflow.py_:
+  1. If you are working on a Mac platform, set __TF_USE_LEGACY_KERAS__ to True.
+     ```sh
+     export TF_USE_LEGACY_KERAS=True
+     ```
+  2. Run the script.
+     ```sh
+     python3 _baselines_tensorflow.py
+     ```
+- For baseline program in PyTorch version - _baselines_pytorch.py_:
+  Simply run the script.
+  ```sh
+  python3 _baselines_pytorch.py
+  ```
