@@ -1,4 +1,4 @@
-# Preprocessor-for-EEG-Signal
+# Preprocessor-for-EEG-Signals
 
 ## Resource
 - [BrainStorming](https://hackmd.io/Z5uL78LPQxOmcMfXGpx-yg)
@@ -9,11 +9,11 @@
 1. Clone this project.
    - For Windows:
      ```sh
-     git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git
+     git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signals.git
      ```
    - For Mac: (Unclear, need to test)
      ```sh
-     git clone https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git
+     git clone https://github.com/aisu-programming/Preprocessor-for-EEG-Signals.git
      cd Preprocessor-for-EEG-Signal
      git submodule init
      git submodule update
