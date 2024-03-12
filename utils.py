@@ -80,7 +80,11 @@ class Dataset():
                                     picks=picks, baseline=None, preload=True, verbose=0,
                                     on_missing="warn")  # "ignore"
 
-                self.data[f"A0{sub_id}{te}"] = epochs.get_data(copy=False) # set explicitly due to warning
+                try: 
+                    self.data[f"A0{sub_id}{te}"] = epochs.get_data(copy=False) # set explicitly due to warning
+                except TypeError:
+                    self.data[f"A0{sub_id}{te}"] = epochs.get_data()
+
                 if te == 'T':
                     if sub_id == 4:
                         self.labels[f"A0{sub_id}T"] = epochs.events[:, -1] - 5
