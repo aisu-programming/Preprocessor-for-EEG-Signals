@@ -14,7 +14,7 @@
    - For Mac: (Unclear, need to test)
      ```sh
      git clone https://github.com/aisu-programming/Preprocessor-for-EEG-Signals.git
-     cd Preprocessor-for-EEG-Signal
+     cd Preprocessor-for-EEG-Signals
      git submodule init
      git submodule update
      ```
