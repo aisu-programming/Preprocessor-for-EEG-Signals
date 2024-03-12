@@ -93,7 +93,7 @@ def baseline_EEGNet(
     assert dataset in ["BCIC-IV-2a"], "Invalid value for parameter 'dataset'."
 
     if dataset == "BCIC-IV-2a":
-        dataset = BcicIv2aDataset(subjects=[1])  # l_freq=4
+        dataset = BcicIv2aDataset()  # l_freq=4
 
     X_all = np.concatenate([ v for v in dataset.data.values()   ], axis=0)
     y_all = np.concatenate([ v for v in dataset.labels.values() ], axis=0)
