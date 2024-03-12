@@ -49,10 +49,10 @@
      ```
   2. Run the script.
      ```sh
-     python3 _baselines_tensorflow.py
+     python3 baselines_tensorflow.py
      ```
 - For baseline program in PyTorch version - _baselines_pytorch.py_: <br>
   Simply run the script.
   ```sh
-  python3 _baselines_pytorch.py
+  python3 baselines_pytorch.py
   ```
