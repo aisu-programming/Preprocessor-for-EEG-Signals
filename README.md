@@ -7,7 +7,9 @@
 
 ## Tutorial
 1. Clone this project by: <br>
-   `git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git`.
+   ```
+   git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git
+   ```
 2. Download the datasets below and put them in directory "_datasets_".
 3. Rename the file "_.env_sample_" to "_.env_".
 
@@ -17,19 +19,22 @@
    - [Test subset labels](https://www.bbci.de/competition/iv/results/ds2a/true_labels.zip)
 
 ## Environment
-- With pip: `pip install -r requirements.txt`. <br/>
+- With pip:
+  ```
+  pip install -r requirements.txt
+  ```
 - Can also use conda. <br>
 - ~~Must use Python <= 3.9 because of tensorflow.~~
-> [!TIP]
-> When running MacOS on Apple Silicon, also install `tensorflow-metal` to utilize GPU usage:
-> ```sh
-> $ pip install tensorflow-metal
-> ```
-> You'll want to run with a higher batch size to get the benefits.
+  > [!TIP]
+  > When running MacOS on Apple Silicon, also install `tensorflow-metal` to utilize GPU usage:
+  > ```sh
+  > $ pip install tensorflow-metal
+  > ```
+  > You'll want to run with a higher batch size to get the benefits.
 
 ## Example
-Here's how you can run `baselines.py` from your shell:
- - first, set `TF_USE_LEGACY_KERAS` to True.
+Here's how you can run _baselines.py_ from your shell:
+ - first, set __TF_USE_LEGACY_KERAS__ to True.
    ```sh
    $ export TF_USE_LEGACY_KERAS=True
    ```
