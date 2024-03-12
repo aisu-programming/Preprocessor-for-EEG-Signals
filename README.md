@@ -51,7 +51,7 @@
      ```sh
      python3 _baselines_tensorflow.py
      ```
-- For baseline program in PyTorch version - _baselines_pytorch.py_:
+- For baseline program in PyTorch version - _baselines_pytorch.py_: <br>
   Simply run the script.
   ```sh
   python3 _baselines_pytorch.py
