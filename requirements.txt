@@ -2,4 +2,5 @@ python-dotenv
 mne
 scikit-learn
 matplotlib
-tensorflow==2.5
+tensorflow
+tf_keras

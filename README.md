@@ -8,15 +8,32 @@
 ## Tutorial
 1. Clone this project by: <br>
    `git clone --recurse-submodules https://github.com/aisu-programming/Preprocessor-for-EEG-Signal.git`.
-2. Download the above datasets and put them in directory "_datasets_".
+2. Download the datasets below and put them in directory "_datasets_".
 3. Rename the file "_.env_sample_" to "_.env_".
 
 ## Dataset
-1. BCI Competition IV 2a <br>
-   [Train subset with labels + Test subset without labels + Documents](https://www.bbci.de/competition/download/competition_iv/BCICIV_2a_gdf.zip) <br>
-   [Test subset labels](https://www.bbci.de/competition/iv/results/ds2a/true_labels.zip)
+1. `BCI Competition IV 2a` - *place the contents of these downloads into the same folder with this name.* <br>
+   - [Train subset with labels + Test subset without labels + Documents](https://www.bbci.de/competition/download/competition_iv/BCICIV_2a_gdf.zip) <br>
+   - [Test subset labels](https://www.bbci.de/competition/iv/results/ds2a/true_labels.zip)
 
 ## Environment
-With pip: `pip install -r requirements.txt`. <br>
-Can also use conda. <br>
-Must use Python <= 3.9 because of tensorflow.
+- With pip: `pip install -r requirements.txt`. <br/>
+- Can also use conda. <br>
+- ~~Must use Python <= 3.9 because of tensorflow.~~
+> [!TIP]
+> When running MacOS on Apple Silicon, also install `tensorflow-metal` to utilize GPU usage:
+> ```sh
+> $ pip install tensorflow-metal
+> ```
+> You'll want to run with a higher batch size to get the benefits.
+
+## Example
+Here's how you can run `baselines.py` from your shell:
+ - first, set `TF_USE_LEGACY_KERAS` to True.
+   ```sh
+   $ export TF_USE_LEGACY_KERAS=True
+   ```
+ - then, run the script.
+   ```sh
+   $ python3 baselines.py
+   ```

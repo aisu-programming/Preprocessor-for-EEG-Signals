@@ -1,4 +1,6 @@
 ##### Libraries #####
+import dotenv
+dotenv.load_dotenv(".env")
 import os
 import time
 import shutil
@@ -114,7 +116,7 @@ def baseline_EEGNet(
         decay_steps=decay_steps,
         decay_rate=decay_rate,
     )
-    optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+    optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=lr_schedule)
     model_8_2.compile(loss="categorical_crossentropy", optimizer=optimizer,
                       metrics=["accuracy"])
     history = model_8_2.fit(X_train, y_train,
