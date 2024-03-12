@@ -33,9 +33,8 @@ class RecordLearningRate(tf.keras.callbacks.Callback):
 ##### Functions #####
 def record_history(args: argparse.Namespace) -> None:
     os.makedirs(args.save_path)
-    filename = __file__.split("\\")[-1]
-    shutil.copy(__file__, f"{args.save_path}/{filename}")
-    shutil.copy("utils.py", f"{args.save_path}/utils.py")
+    shutil.copy(__file__, args.save_path)
+    shutil.copy("utils.py", args.save_path)
     with open(f"{args.save_path}/args.txt", 'w') as record_txt:
         for key, value in args._get_kwargs():
             record_txt.write(f"{key}={value}\n")

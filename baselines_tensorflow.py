@@ -24,7 +24,7 @@ from sklearn.model_selection import train_test_split
 class RecordLearningRate(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         lr = self.model.optimizer._decayed_lr(tf.float32).numpy()
-        print(f"Current learning rate: {lr:.10f}")
+        # print(f"\nCurrent learning rate: {lr:.10f}")
         logs = logs or {}
         logs["lr"] = lr
 
@@ -34,12 +34,10 @@ class RecordLearningRate(tf.keras.callbacks.Callback):
 
 ##### Functions #####
 def backup_files(args: argparse.Namespace) -> None:
-    os.makedirs(args.save_path)
-    # filename = __file__.split("\\")[-1]
-    filename = os.path.split(__file__)[1] # get file tail
-    shutil.copy(__file__, f"{args.save_path}/{filename}")
-    shutil.copy("utils.py", f"{args.save_path}/utils.py")
-    with open(f"{args.save_path}/args.txt", 'w') as record_txt:
+    os.makedirs(args.save_dir)
+    shutil.copy(__file__, args.save_dir)
+    shutil.copy("utils.py", args.save_dir)
+    with open(f"{args.save_dir}/args.txt", 'w') as record_txt:
         for key, value in args._get_kwargs():
             record_txt.write(f"{key}={value}\n")
 
@@ -87,7 +85,7 @@ def baseline_EEGNet(
         initial_learning_rate: float,
         decay_steps: int,
         decay_rate: float,
-        save_path: str,
+        save_dir: str,
         save_plot: bool = True,
         show_plot: bool = False,
     ) -> None:
@@ -95,7 +93,7 @@ def baseline_EEGNet(
     assert dataset in ["BCIC-IV-2a"], "Invalid value for parameter 'dataset'."
 
     if dataset == "BCIC-IV-2a":
-        dataset = BcicIv2aDataset()  # l_freq=4
+        dataset = BcicIv2aDataset(subjects=[1])  # l_freq=4
 
     X_all = np.concatenate([ v for v in dataset.data.values()   ], axis=0)
     y_all = np.concatenate([ v for v in dataset.labels.values() ], axis=0)
@@ -114,20 +112,20 @@ def baseline_EEGNet(
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=initial_learning_rate,
         decay_steps=decay_steps,
-        decay_rate=decay_rate,
-    )
+        decay_rate=decay_rate)
     optimizer = tf.keras.optimizers.legacy.Adam(learning_rate=lr_schedule)
-    model_8_2.compile(loss="categorical_crossentropy", optimizer=optimizer,
+    model_8_2.compile(loss="categorical_crossentropy",
+                      optimizer=optimizer,
                       metrics=["accuracy"])
     history = model_8_2.fit(X_train, y_train,
                             batch_size=batch_size,
                             epochs=epochs, verbose=1,
                             validation_data=(X_val, y_val),
                             callbacks=[ RecordLearningRate() ])
-    plot_history(history.history, f"{save_path}/history_plot.png", save_plot, show_plot)
+    plot_history(history.history, f"{save_dir}/history_plot.png", save_plot, show_plot)
 
     best_acc_val = max(history.history["val_accuracy"]) * 100
-    os.rename(save_path, f"{save_path}_{best_acc_val:.2f}%")
+    os.rename(save_dir, f"{save_dir}_{best_acc_val:.2f}%")
 
 
 
@@ -136,7 +134,7 @@ def baseline_EEGNet(
 ##### Execution #####
 if __name__ == "__main__":
 
-    default_save_path_pre = time.strftime("histories/%Y.%m.%d-%H.%M.%S")
+    default_save_dir_pre = time.strftime("histories/%m.%d-%H.%M.%S")
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -152,15 +150,15 @@ if __name__ == "__main__":
         help="The total epochs (iterations) of training."
     )
     parser.add_argument(
-        "-bs", "--batch_size", type=int, default=8,
+        "-bs", "--batch_size", type=int, default=32,
         help="The batch size of training input."
     )
     parser.add_argument(
-        "-ilr", "--initial_learning_rate", type=float, default=9e-3,
+        "-ilr", "--initial_learning_rate", type=float, default=8e-4,
         help="The initial learning rate of the optimizer for training."
     )
     parser.add_argument(
-        "-ds", "--decay_steps", type=int, default=2000,
+        "-ds", "--decay_steps", type=int, default=1000,
         help="The decay step of the optimizer for training."
     )
     parser.add_argument(
@@ -168,7 +166,7 @@ if __name__ == "__main__":
         help="The decay rate of the optimizer for training."
     )
     parser.add_argument(
-        "-sp", "--save_path", type=str, default=None,
+        "-sd", "--save_dir", type=str, default=None,
         help="The path to save all history files."
     )
     parser.add_argument(
@@ -181,10 +179,12 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    if args.save_path is None:
-        args.save_path =  default_save_path_pre
-        args.save_path += f"_{args.model}_{args.dataset}"
-        args.save_path += f"_bs={args.batch_size}"
+    if args.save_dir is None:
+        args.save_dir =  default_save_dir_pre
+        args.save_dir += f"_{args.model}_{args.dataset}"
+        args.save_dir += f"_bs={args.batch_size}"
+        args.save_dir += f"_ilr={args.initial_learning_rate}"
+        args.save_dir += f"_ds={args.decay_steps}"
 
     backup_files(args)
 
@@ -196,7 +196,7 @@ if __name__ == "__main__":
             initial_learning_rate=args.initial_learning_rate,
             decay_steps=args.decay_steps,
             decay_rate=args.decay_rate,
-            save_path=args.save_path,
+            save_dir=args.save_dir,
             save_plot=args.save_plot,
             show_plot=args.show_plot,
         )

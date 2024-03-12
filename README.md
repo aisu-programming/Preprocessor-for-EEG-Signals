@@ -1,4 +1,4 @@
-# Signal-Preprocessor-for-EEG
+# Preprocessor-for-EEG-Signal
 
 ## Resource
 - [BrainStorming](https://hackmd.io/Z5uL78LPQxOmcMfXGpx-yg)
@@ -33,13 +33,13 @@
 > ```
 > You'll want to run with a higher batch size to get the benefits.
 
-## Example
-Here's how you can run _baselines.py_ from your shell:
- - first, set __TF_USE_LEGACY_KERAS__ to True.
+## Example: Baselines
+Here's how you can run _baselines_tensorflow.py_ from your shell:
+1. If you are working on a Mac platform, set __TF_USE_LEGACY_KERAS__ to True.
    ```sh
    $ export TF_USE_LEGACY_KERAS=True
    ```
- - then, run the script.
+2. Run the script.
    ```sh
-   $ python3 baselines.py
+   $ python3 _baselines_tensorflow.py
    ```
