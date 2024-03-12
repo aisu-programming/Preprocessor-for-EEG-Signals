@@ -13,7 +13,7 @@ from utils import BcicIv2aDataset
 from tensorflow.keras import utils
 from tensorflow.keras import backend
 backend.set_image_data_format("channels_last")
-from arl_eegmodels.EEGModels import EEGNet
+from models_tensorflow.EEGModels import EEGNet
 from sklearn.model_selection import train_test_split
 
 
