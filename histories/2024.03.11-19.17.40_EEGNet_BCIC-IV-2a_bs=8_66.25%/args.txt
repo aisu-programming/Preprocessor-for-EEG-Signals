@@ -1,0 +1,10 @@
+model=EEGNet
+dataset=BCIC-IV-2a
+epochs=350
+batch_size=8
+initial_learning_rate=0.009
+decay_steps=2000
+decay_rate=0.9
+save_path=histories/2024.03.11-19.17.40_EEGNet_BCIC-IV-2a_bs=8
+save_plot=True
+show_plot=True
