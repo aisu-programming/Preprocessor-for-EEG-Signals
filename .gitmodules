@@ -1,3 +1,3 @@
-[submodule "./arl_eegmodels/"]
+[submodule "./models_tensorflow/"]
 	path = ./models_tensorflow/
 	url = https://github.com/vlawhern/arl-eegmodels
