@@ -47,17 +47,22 @@
 > You'll want to run with a higher batch size to get the benefits.
 
 ## Example: Baselines
-- For baseline program in TensorFlow version - _baselines_tensorflow.py_:
-  1. If you are working on a Mac platform, set __TF_USE_LEGACY_KERAS__ to True.
+- For baseline program in TensorFlow version - _baselines_tensorflow.py_
+  1. If you are working on a Mac platform, set __TF_USE_LEGACY_KERAS__ to True by:
      ```sh
      export TF_USE_LEGACY_KERAS=True
      ```
-  2. Run the script.
+  2. Run the script:
      ```sh
-     python3 baselines_tensorflow.py
+     python baselines_tensorflow.py
      ```
-- For baseline program in PyTorch version - _baselines_pytorch.py_: <br>
-  Simply run the script.
+- For baseline program in PyTorch version - _baselines_pytorch.py_ <br>
+  Simply run the script:
   ```sh
-  python3 baselines_pytorch.py
+  python baselines_pytorch.py
+  ```
+- For running on HPC Greene <br>
+  Adjust the command with slurm command prefix
+  ```sh
+  srun -c 16 --mem=64GB --gres=gpu:1 --time=02:00:00 --pty python baselines_pytorch.py
   ```

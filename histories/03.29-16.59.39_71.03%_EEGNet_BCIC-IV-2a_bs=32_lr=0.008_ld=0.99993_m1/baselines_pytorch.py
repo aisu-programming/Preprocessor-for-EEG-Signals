@@ -350,18 +350,7 @@ def baseline_EEGNet(args):
                                       "Valid Confusion Matirx at Best Valid Acc")
             torch.save(model_8_2, f"{args.save_dir}/best_valid_acc.pt")
 
-        if epoch == args.epochs and (args.save_plot or args.show_plot):
-            history = {
-                "accuracy": train_accs,
-                "val_accuracy": valid_accs,
-                "loss": train_losses,
-                "val_loss": valid_losses,
-                "lr": lrs,
-            }
-            utils.plot_history(history, "EEGNet",
-                               f"{args.save_dir}/history_plot.png",
-                               args.save_plot, args.show_plot)
-        elif epoch % 50 == 0 and args.save_plot:
+        if args.save_plot and epoch % 50 == 0:
             history = {
                 "accuracy": train_accs,
                 "val_accuracy": valid_accs,
@@ -372,10 +361,18 @@ def baseline_EEGNet(args):
             utils.plot_history(history, "EEGNet",
                                f"{args.save_dir}/history_plot.png", True, False)
 
+    if args.save_plot or args.show_plot:
+        history = {
+            "accuracy": train_accs,
+            "val_accuracy": valid_accs,
+            "loss": train_losses,
+            "val_loss": valid_losses,
+            "lr": lrs,
+        }
+        utils.plot_history(history, "EEGNet",
+                        f"{args.save_dir}/history_plot.png", args.save_plot, args.show_plot)
     tensorboard.close()
-    new_save_dir = args.save_dir.split('_', 1)
-    new_save_dir = f"{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
-    os.rename(args.save_dir, new_save_dir)
+    os.rename(args.save_dir, f"{args.save_dir}_{best_valid_acc*100:.2f}%")
     return
 
 
@@ -403,7 +400,7 @@ if __name__ == "__main__":
         help="Whether to use the signal mixing techniques in training data."
     )
     parser.add_argument(
-        "-e", "--epochs", type=int, default=500,
+        "-e", "--epochs", type=int, default=300,
         help="The total epochs (iterations) of training."
     )
     parser.add_argument(
@@ -442,15 +439,12 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    if args.mixing: assert args.mixing_duplicate >= 1
-
     if args.save_dir is None:
-        args.save_dir = time.strftime("histories_tmp/%m.%d-%H.%M.%S")
+        args.save_dir = time.strftime("histories/%m.%d-%H.%M.%S")
         args.save_dir += f"_{args.model}_{args.dataset}"
         args.save_dir += f"_bs={args.batch_size}"
         args.save_dir += f"_lr={args.learning_rate}"
         args.save_dir += f"_ld={args.lr_decay}"
-        if args.mixing: args.save_dir += f"_m{args.mixing_duplicate}"
 
     backup_files(args)
 
