@@ -127,13 +127,17 @@ def plot_history(
 
     fig, axs = plt.subplots(3, 1, figsize=(8, 6))
     fig.suptitle(f"Baseline: {model}")
-    axs[0].plot(list(range(1, len(train_acc)+1)), train_acc, label=f"best train acc={max(train_acc)*100:.2f}%")
-    axs[0].plot(list(range(1, len(val_acc)+1)),   val_acc,   label=f"best valid acc={max(val_acc)*100:.2f}%")
+    axs[0].plot(list(range(1, len(train_acc)+1)), train_acc,
+                label=f"best train acc={max(train_acc)*100:.2f}% @ {np.argmax(train_acc)+1}")
+    axs[0].plot(list(range(1, len(val_acc)+1)), val_acc,
+                label=f"best valid acc={max(val_acc)*100:.2f}% @ {np.argmax(val_acc)+1}")
     axs[0].set_title("Accuracies")
     axs[0].legend()
     axs[0].grid()
-    axs[1].plot(list(range(1, len(train_loss)+1)), train_loss, label=f"best train loss={min(train_loss):.5f}")
-    axs[1].plot(list(range(1, len(val_loss)+1)),   val_loss,   label=f"best valid loss={min(val_loss):.5f}")
+    axs[1].plot(list(range(1, len(train_loss)+1)), train_loss,
+                label=f"best train loss={min(train_loss):.5f} @ {np.argmin(train_loss)+1}")
+    axs[1].plot(list(range(1, len(val_loss)+1)), val_loss,
+                label=f"best valid loss={min(val_loss):.5f} @ {np.argmin(val_loss)+1}")
     axs[1].set_title("Losses")
     axs[1].set_yscale("log")
     axs[1].legend()

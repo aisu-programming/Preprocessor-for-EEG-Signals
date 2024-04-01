@@ -147,7 +147,7 @@ if __name__ == "__main__":
         help="The dataset used for training."
     )
     parser.add_argument(
-        "-e", "--epochs", type=int, default=500,
+        "-e", "--epochs", type=int, default=300,
         help="The total epochs (iterations) of training."
     )
     parser.add_argument(
@@ -155,7 +155,7 @@ if __name__ == "__main__":
         help="The batch size of training input."
     )
     parser.add_argument(
-        "-ilr", "--initial_learning_rate", type=float, default=5e-5,
+        "-ilr", "--initial_learning_rate", type=float, default=1e-3,
         help="The initial learning rate of the optimizer for training."
     )
     parser.add_argument(
@@ -163,7 +163,7 @@ if __name__ == "__main__":
         help="The decay step of the optimizer for training."
     )
     parser.add_argument(
-        "-dr", "--decay_rate", type=float, default=0.99983,
+        "-dr", "--decay_rate", type=float, default=0.9998,
         help="The decay rate of the optimizer for training."
     )
     parser.add_argument(

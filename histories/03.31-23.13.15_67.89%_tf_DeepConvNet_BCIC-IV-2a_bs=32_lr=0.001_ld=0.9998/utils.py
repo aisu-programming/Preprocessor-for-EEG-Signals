@@ -6,6 +6,7 @@ import mne
 import scipy.io
 import itertools
 import numpy as np
+import matplotlib.pyplot as plt
 from tqdm import tqdm
 from typing import Literal, List, Dict
 
@@ -45,16 +46,13 @@ class Dataset():
             for sub_id, te in pbar:
                 pbar.set_description(f"Loading BCIC IV 2a dataset - A0{sub_id}{te}")
 
-
                 gdf_path = Path(os.environ["DATASET_DIR"]) / "BCI Competition IV 2a" / f"A0{sub_id}{te}.gdf"
-                # gdf_path = os.environ["DATASET_DIR"] + f"\BCI Competition IV 2a\A0{sub_id}{te}.gdf"
                 raw: mne.io.edf.edf.RawGDF = mne.io.read_raw_gdf(gdf_path, preload=True, verbose=0)
 
                 if l_freq == -np.Inf: l_freq = raw.info["highpass"]
                 if h_freq ==  np.Inf: h_freq = raw.info["lowpass"]
 
                 ### !!! Need to Check !!! ###
-
                 # raw.filter(l_freq, h_freq, fir_design="firwin")
                 raw.filter(l_freq, h_freq, method="iir", iir_params=dict(order=3, ftype="butter"), phase="zero", verbose=0)
                 # , l_trans_bandwidth=l_freq, h_trans_bandwidth=10)
@@ -80,7 +78,11 @@ class Dataset():
                                     picks=picks, baseline=None, preload=True, verbose=0,
                                     on_missing="warn")  # "ignore"
 
-                self.data[f"A0{sub_id}{te}"] = epochs.get_data(copy=False) # set explicitly due to warning
+                try: 
+                    self.data[f"A0{sub_id}{te}"] = epochs.get_data(copy=False) # set explicitly due to warning
+                except TypeError:
+                    self.data[f"A0{sub_id}{te}"] = epochs.get_data()
+
                 if te == 'T':
                     if sub_id == 4:
                         self.labels[f"A0{sub_id}T"] = epochs.events[:, -1] - 5
@@ -88,7 +90,6 @@ class Dataset():
                         self.labels[f"A0{sub_id}T"] = epochs.events[:, -1] - 7
                 else:
                     mat_path = Path(os.environ["DATASET_DIR"]) / "BCI Competition IV 2a" / f"A0{sub_id}E.mat"
-                    # mat_path = os.environ["DATASET_DIR"] + f"\BCI Competition IV 2a\A0{sub_id}E.mat"
                     self.labels[f"A0{sub_id}E"] = scipy.io.loadmat(str(mat_path))["classlabel"].flatten() - 1
 
 
@@ -104,6 +105,51 @@ class BcicIv2aDataset(Dataset):
         ) -> None:
         kwargs["remove_EOG"] = remove_EOG
         super().__init__("BCIC-IV-2a", subjects, l_freq, h_freq, *args, **kwargs)
+
+
+
+
+
+##### Functions #####
+def plot_history(
+        history: Dict[str, list],
+        model: str,
+        output_path: str,
+        save: bool = True,
+        show: bool = False,
+    ) -> None:
+
+    train_acc  = history["accuracy"]
+    val_acc    = history["val_accuracy"]
+    train_loss = history["loss"]
+    val_loss   = history["val_loss"]
+    lr         = history["lr"]
+
+    fig, axs = plt.subplots(3, 1, figsize=(8, 6))
+    fig.suptitle(f"Baseline: {model}")
+    axs[0].plot(list(range(1, len(train_acc)+1)), train_acc,
+                label=f"best train acc={max(train_acc)*100:.2f}% @ {np.argmax(train_acc)+1}")
+    axs[0].plot(list(range(1, len(val_acc)+1)), val_acc,
+                label=f"best valid acc={max(val_acc)*100:.2f}% @ {np.argmax(val_acc)+1}")
+    axs[0].set_title("Accuracies")
+    axs[0].legend()
+    axs[0].grid()
+    axs[1].plot(list(range(1, len(train_loss)+1)), train_loss,
+                label=f"best train loss={min(train_loss):.5f} @ {np.argmin(train_loss)+1}")
+    axs[1].plot(list(range(1, len(val_loss)+1)), val_loss,
+                label=f"best valid loss={min(val_loss):.5f} @ {np.argmin(val_loss)+1}")
+    axs[1].set_title("Losses")
+    axs[1].set_yscale("log")
+    axs[1].legend()
+    axs[1].grid()
+    axs[2].plot(list(range(1, len(lr)+1)), lr)
+    axs[2].set_title("Learning Rate")
+    axs[2].set_yscale("log")
+    axs[2].grid()
+
+    plt.tight_layout()
+    if show: plt.show()
+    if save: fig.savefig(output_path)
 
 
 

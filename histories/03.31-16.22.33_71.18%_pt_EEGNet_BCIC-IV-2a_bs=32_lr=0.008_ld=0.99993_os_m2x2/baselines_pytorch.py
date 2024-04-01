@@ -6,7 +6,6 @@ torch.manual_seed(0)
 import utils
 import shutil
 import random
-random.seed(0)
 import argparse
 import numpy as np
 np.random.seed(0)
@@ -30,19 +29,10 @@ class MyMapDataset(Dataset):
     def __init__(self,
                  inputs          : Union[list, np.ndarray],
                  truths          : Union[list, np.ndarray],
-                 # original_signal : bool = True,
-                 mixed_signal    : bool = False,
-                 mixing_source   : int  = 2,
-                 mixing_duplicate: int  = 1) -> None:
+                 mixing          : bool = False,
+                 mixing_duplicate: int  = 0) -> None:
         
-        # self.original_signal = original_signal
-        # self.mixed_signal = mixed_signal
-        # self.mixing_source = mixing_source
-        # self.mixing_duplicate = mixing_duplicate
-        # if self.original_signal and self.mixed_signal:
-        #     self.original_chance = random.random() < (1 / self.mixing_duplicate+1)
-
-        if mixed_signal:
+        if mixing:
             truths = np.argmax(truths, 1)
             group = { tth: [] for tth in set(truths) }
             for ipt, tth in zip(inputs, truths):
@@ -52,12 +42,9 @@ class MyMapDataset(Dataset):
                 ori_sig = group[tth].copy()
                 shf_sig = group[tth].copy()
                 for _ in range(mixing_duplicate):
-                    mix_factors = np.random.random((mixing_source, len(ori_sig)))
-                    mix_factors /= np.sum(mix_factors, axis=0)
-                    mixed_signal = np.reshape(mix_factors[0], (len(ori_sig),1,1,1)) * ori_sig
-                    for mf in mix_factors[1:]:
-                        random.shuffle(shf_sig)
-                        mixed_signal += np.reshape(mf, (len(ori_sig),1,1,1))*shf_sig
+                    random.shuffle(shf_sig)
+                    mix_factor = 0.1 + np.random.random((len(ori_sig),1,1,1)) * 0.8
+                    mixed_signal = mix_factor * ori_sig + (1-mix_factor) * shf_sig
                     group[tth] = np.concatenate([group[tth], mixed_signal])
             inputs = np.concatenate(list(group.values()))
             truths = np.concatenate([ np.array([[k==i for i in range(4)]]*len(v)) for k, v in group.items() ])
@@ -67,13 +54,6 @@ class MyMapDataset(Dataset):
 
     def __getitem__(self, index: int) -> Tuple[torch.Tensor, torch.Tensor]:
         return self.inputs[index], self.truths[index]
-        # if not self.mixed_signal:
-        #     return self.inputs[index], self.truths[index]
-        # elif self.original_signal and self.mixed_signal and self.original_chance:
-        #     return self.inputs[index], self.truths[index]
-        # else:
-        #     truth = self.truths[index]
-        #     return self.inputs[index], 
 
     def __len__(self) -> int:
         return len(self.inputs)
@@ -295,9 +275,7 @@ def baseline_EEGNet(args):
     # my_train_dataset, my_valid_dataset = split_datasets(my_dataset)
     train_inputs, train_truths, valid_inputs, valid_truths = split_data(inputs, truths)
     my_train_dataset = MyMapDataset(train_inputs, train_truths,
-                                    mixed_signal=args.mixed_signal,
-                                    mixing_source=args.mixing_source,
-                                    mixing_duplicate=args.mixing_duplicate)
+                                    mixing=args.mixing, mixing_duplicate=args.mixing_duplicate)
     my_valid_dataset = MyMapDataset(valid_inputs, valid_truths)
     
     my_train_dataLoader = torch.utils.data.DataLoader(
@@ -398,8 +376,8 @@ def baseline_EEGNet(args):
                                f"{args.save_dir}/history_plot.png", True, False)
 
     tensorboard.close()
-    new_save_dir = args.save_dir.replace("histories_tmp/", '')
-    new_save_dir = new_save_dir.split('_', 1)
+    new_save_dir.replace("histories_tmp/", '')
+    new_save_dir = args.save_dir.split('_', 1)
     new_save_dir = f"histories_tmp/{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
     os.rename(args.save_dir, new_save_dir)
     return
@@ -420,21 +398,13 @@ if __name__ == "__main__":
         "-d", "--dataset", type=str, default="BCIC-IV-2a",
         help="The dataset used for training."
     )
-    # parser.add_argument(
-    #     "-os", "--original-signal", type=bool, default=True,
-    #     help="Whether to use the original signal for training."
-    # )
     parser.add_argument(
-        "-mx", "--mixed-signal", type=bool, default=True,
-        help="Whether to use the mixed signal for training."
+        "-mx", "--mixing", type=bool, default=True,
+        help="Whether to use the signal mixing techniques in training data."
     )
     parser.add_argument(
-        "-ms", "--mixing-source", type=int, default=3,
-        help="The amount of signal source used to mix one mixed signal."
-    )
-    parser.add_argument(
-        "-md", "--mixing-duplicate", type=int, default=1,
-        help="The amount of mixed signal for training."
+        "-md", "--mixing-duplicate", type=int, default=2,
+        help="Whether to use the signal mixing techniques in training data."
     )
     parser.add_argument(
         "-e", "--epochs", type=int, default=300,
@@ -476,23 +446,15 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
-    # assert args.original_signal and args.mixed_signal, \
-    #     "Either 'original_signal' or 'mixed_signal' must be True."
-    if args.mixed_signal:
-        assert args.mixing_duplicate >= 1, \
-            "Parameter 'mixing_duplicate' must be >= 1 when using 'mixed_signal'."
-        assert args.mixing_source >= 2, \
-            "Parameter 'mixing_source' must be >= 2 when using 'mixed_signal'."
+    if args.mixing: assert args.mixing_duplicate >= 1
 
     if args.save_dir is None:
-        args.save_dir = time.strftime("histories_tmp/%m.%d-%H.%M.%S_pt")
+        args.save_dir = time.strftime("histories_tmp/%m.%d-%H.%M.%S")
         args.save_dir += f"_{args.model}_{args.dataset}"
         args.save_dir += f"_bs={args.batch_size}"
         args.save_dir += f"_lr={args.learning_rate}"
         args.save_dir += f"_ld={args.lr_decay}"
-        args.save_dir += f"_os"
-        # if args.original_signal: args.save_dir += f"_os"
-        if args.mixed_signal: args.save_dir += f"_m{args.mixing_source}x{args.mixing_duplicate}"
+        if args.mixing: args.save_dir += f"_m{args.mixing_duplicate}"
 
     backup_files(args)
 
