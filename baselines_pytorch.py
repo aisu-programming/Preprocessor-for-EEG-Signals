@@ -3,23 +3,23 @@ import os
 import time
 import torch
 torch.manual_seed(0)
-import utils
 import shutil
 import random
 random.seed(0)
 import argparse
 import numpy as np
 np.random.seed(0)
-import pandas as pd
-import seaborn as sn
 import torch.utils.data
-import models_pytorch.EEGNet
-import matplotlib.pyplot as plt
 from tqdm import tqdm
 from typing import Union, Tuple, List, Literal
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import Dataset, Subset
 from torch.utils.tensorboard import SummaryWriter
+
+import utils
+import models_pytorch.EEGNet
+from .utils import Metric, plot_confusion_matrix, plot_history
+from .libs.dataset import BcicIv2aDataset, InnerSpeechDataset
 
 
 
@@ -79,21 +79,6 @@ class MyMapDataset(Dataset):
         return len(self.inputs)
 
 
-class Metric():
-    def __init__(self, length: int) -> None:
-        self.length = length
-        self.values = []
-
-    def append(self, value) -> None:
-        self.values.append(value)
-        if len(self.values) > self.length: self.values.pop(0)
-        return
-
-    @ property
-    def avg(self) -> float:
-        return np.average(self.values)
-
-
 
 
 
@@ -103,6 +88,7 @@ def backup_files(args: argparse.Namespace) -> None:
     shutil.copy(__file__, args.save_dir)
     shutil.copy(utils.__file__, args.save_dir)
     shutil.copy(models_pytorch.EEGNet.__file__, args.save_dir)
+    # shutil.copy("", args.save_dir)
     with open(f"{args.save_dir}/args.txt", 'w') as record_txt:
         for key, value in args._get_kwargs():
             record_txt.write(f"{key}={value}\n")
@@ -146,24 +132,6 @@ def get_lr(optimizer: torch.optim.Optimizer) -> float:
     for param_group in optimizer.param_groups:
         return param_group["lr"]
     
-
-def plot_confusion_matrix(
-        cm_length: int,
-        cm: np.ndarray,
-        filename: str,
-        title: str,
-    ) -> None:
-    cm_df = pd.DataFrame(cm, index=list(range(cm_length)), columns=list(range(cm_length)))
-    plt.figure(figsize=(6, 5))
-    cm_image:plt.Axes = sn.heatmap(cm_df, annot=True)
-    cm_image.set_xlabel("prediction", fontsize=10)
-    cm_image.set_ylabel("truth", fontsize=10)
-    plt.title(title)
-    plt.tight_layout()
-    plt.savefig(filename)
-    plt.close()
-    return
-
 
 def train_epoch(
         model: torch.nn.Module,
@@ -279,20 +247,16 @@ def valid_epoch(
     return loss_metric.avg, acc_metric.avg, confusion_matrixs
 
 
-def baseline_EEGNet(args):
+def train(args):
     assert args.dataset in ["BCIC-IV-2a"], "Invalid value for parameter 'dataset'."
 
     tensorboard = SummaryWriter(args.save_dir)
     if args.dataset == "BCIC-IV-2a":
-        dataset = utils.BcicIv2aDataset()  # l_freq=4
-        inputs = np.concatenate([ v for v in dataset.data.values()   ], axis=0)
+        dataset = BcicIv2aDataset()  # l_freq=4
+        inputs, truths = dataset.all_data_and_label
         inputs = np.expand_dims(inputs, axis=1)
-        truths = np.concatenate([ v for v in dataset.labels.values() ], axis=0)
-        cm_length = len(set(truths))
-        truths = np.array([ [ v==l for l in range(cm_length) ] for v in truths ])
+        cm_length = 4
 
-    # my_dataset = MyMapDataset(inputs, truths)
-    # my_train_dataset, my_valid_dataset = split_datasets(my_dataset)
     train_inputs, train_truths, valid_inputs, valid_truths = split_data(inputs, truths)
     my_train_dataset = MyMapDataset(train_inputs, train_truths,
                                     mixed_signal=args.mixed_signal,
@@ -383,9 +347,9 @@ def baseline_EEGNet(args):
                 "val_loss": valid_losses,
                 "lr": lrs,
             }
-            utils.plot_history(history, "EEGNet",
-                               f"{args.save_dir}/history_plot.png",
-                               args.save_plot, args.show_plot)
+            plot_history(history, "EEGNet",
+                         f"{args.save_dir}/history_plot.png",
+                         args.save_plot, args.show_plot)
         elif epoch % 50 == 0 and args.save_plot:
             history = {
                 "accuracy": train_accs,
@@ -394,8 +358,8 @@ def baseline_EEGNet(args):
                 "val_loss": valid_losses,
                 "lr": lrs,
             }
-            utils.plot_history(history, "EEGNet",
-                               f"{args.save_dir}/history_plot.png", True, False)
+            plot_history(history, "EEGNet",
+                         f"{args.save_dir}/history_plot.png", True, False)
 
     tensorboard.close()
     new_save_dir = args.save_dir.replace("histories_tmp/", '')
@@ -429,11 +393,11 @@ if __name__ == "__main__":
         help="Whether to use the mixed signal for training."
     )
     parser.add_argument(
-        "-ms", "--mixing-source", type=int, default=3,
+        "-ms", "--mixing-source", type=int, default=2,
         help="The amount of signal source used to mix one mixed signal."
     )
     parser.add_argument(
-        "-md", "--mixing-duplicate", type=int, default=1,
+        "-md", "--mixing-duplicate", type=int, default=2,
         help="The amount of mixed signal for training."
     )
     parser.add_argument(
@@ -497,4 +461,4 @@ if __name__ == "__main__":
     backup_files(args)
 
     if args.model == "EEGNet":
-        baseline_EEGNet(args)
+        train(args)
