@@ -18,8 +18,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 import utils
 import models_pytorch.EEGNet
-from .utils import Metric, plot_confusion_matrix, plot_history
-from .libs.dataset import BcicIv2aDataset, InnerSpeechDataset
+from utils import Metric, plot_confusion_matrix, plot_history
+from libs.dataset import BcicIv2aDataset, InnerSpeechDataset
 
 
 
@@ -248,14 +248,16 @@ def valid_epoch(
 
 
 def train(args):
-    assert args.dataset in ["BCIC-IV-2a"], "Invalid value for parameter 'dataset'."
+    assert args.dataset in ["BCIC-IV-2a", "Inner-Speech"], \
+        "Invalid value for parameter 'dataset'."
 
-    tensorboard = SummaryWriter(args.save_dir)
     if args.dataset == "BCIC-IV-2a":
         dataset = BcicIv2aDataset()  # l_freq=4
         inputs, truths = dataset.all_data_and_label
-        inputs = np.expand_dims(inputs, axis=1)
-        cm_length = 4
+    elif args.dataset == "Inner-Speech":
+        dataset = InnerSpeechDataset()
+        inputs, truths = dataset.all_data_and_label
+    inputs = np.expand_dims(inputs, axis=1)
 
     train_inputs, train_truths, valid_inputs, valid_truths = split_data(inputs, truths)
     my_train_dataset = MyMapDataset(train_inputs, train_truths,
@@ -267,13 +269,11 @@ def train(args):
     my_train_dataLoader = torch.utils.data.DataLoader(
         my_train_dataset, args.batch_size, shuffle=True,
         pin_memory=True, drop_last=False,
-        num_workers=args.num_workers, persistent_workers=True,
-    )
+        num_workers=args.num_workers, persistent_workers=True)
     my_valid_dataLoader = torch.utils.data.DataLoader(
         my_valid_dataset, args.batch_size, shuffle=True,
         pin_memory=True, drop_last=False,
-        num_workers=args.num_workers, persistent_workers=True,
-    )
+        num_workers=args.num_workers, persistent_workers=True)
 
     # print("ground_truth_count:", my_train_dataset.ground_truth_count)
     # train_btc_avg      = sum(my_train_dataset.ground_truth_count) / len(my_train_dataset.ground_truth_count)
@@ -282,26 +282,30 @@ def train(args):
     # valid_btc_avg      = sum(my_valid_dataset.ground_truth_count) / len(my_valid_dataset.ground_truth_count)
     # valid_weight       = [ (valid_btc_avg/btc) for btc in my_valid_dataset.ground_truth_count ]
 
-    model_8_2 = models_pytorch.EEGNet.EEGNet(
-                    nb_classes=4, Chans=inputs.shape[2], Samples=inputs.shape[3],
-                    dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
+    if args.model == "EEGNet":
+        model = models_pytorch.EEGNet.EEGNet(
+                    nb_classes=dataset.class_number,
+                    Chans=inputs.shape[2], Samples=inputs.shape[3],
+                    dropoutRate=0.75, kernLength=32, F1=8, D=8, F2=64,
                     dropoutType="Dropout").to(args.device)
+    
     criterion: torch.nn.Module = \
         torch.nn.CrossEntropyLoss()  # weight=train_weight_torch)
     optimizer: torch.optim.Optimizer = \
-        torch.optim.Adam(model_8_2.parameters(), lr=args.learning_rate)
+        torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     lr_scheduler: torch.optim.lr_scheduler.LRScheduler = \
         torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
 
+    tensorboard = SummaryWriter(args.save_dir)
     best_valid_loss, best_valid_acc = np.inf, 0.0
     train_losses, train_accs, valid_losses, valid_accs, lrs = [], [], [], [], []
     for epoch in range(1, args.epochs+1):
         print(f"{epoch}/{args.epochs}")
 
-        train_results = train_epoch(model_8_2, my_train_dataLoader, criterion, optimizer,
-                                    lr_scheduler, args.device, cm_length=cm_length)  # , train_weight)
-        valid_results = valid_epoch(model_8_2, my_valid_dataLoader, criterion, args.device,
-                                    cm_length=cm_length)  # , valid_weight)
+        train_results = train_epoch(model, my_train_dataLoader, criterion, optimizer,
+                                    lr_scheduler, args.device, cm_length=dataset.class_number)  # , train_weight)
+        valid_results = valid_epoch(model, my_valid_dataLoader, criterion, args.device,
+                                    cm_length=dataset.class_number)  # , valid_weight)
         
         train_loss, train_acc, train_cm = train_results
         valid_loss, valid_acc, valid_cm = valid_results
@@ -320,24 +324,24 @@ def train(args):
 
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
-            if cm_length != 0:
-                plot_confusion_matrix(cm_length, train_cm, 
+            if dataset.class_number != 0:
+                plot_confusion_matrix(dataset.class_number, train_cm, 
                                       f"{args.save_dir}/best_valid_loss_train_cm.png",
                                       "Train Confusion Matirx at Best Valid Loss")
-                plot_confusion_matrix(cm_length, valid_cm,
+                plot_confusion_matrix(dataset.class_number, valid_cm,
                                       f"{args.save_dir}/best_valid_loss_valid_cm.png",
                                       "Valid Confusion Matirx at Best Valid Loss")
-            torch.save(model_8_2, f"{args.save_dir}/best_valid_loss.pt")
+            torch.save(model, f"{args.save_dir}/best_valid_loss.pt")
         if valid_acc > best_valid_acc:
             best_valid_acc = valid_acc
-            if cm_length != 0:
-                plot_confusion_matrix(cm_length, train_cm,
+            if dataset.class_number != 0:
+                plot_confusion_matrix(dataset.class_number, train_cm,
                                       f"{args.save_dir}/best_valid_acc_train_cm.png",
                                       "Train Confusion Matirx at Best Valid Acc")
-                plot_confusion_matrix(cm_length, valid_cm,
+                plot_confusion_matrix(dataset.class_number, valid_cm,
                                       f"{args.save_dir}/best_valid_acc_valid_cm.png",
                                       "Valid Confusion Matirx at Best Valid Acc")
-            torch.save(model_8_2, f"{args.save_dir}/best_valid_acc.pt")
+            torch.save(model, f"{args.save_dir}/best_valid_acc.pt")
 
         if epoch == args.epochs and (args.save_plot or args.show_plot):
             history = {
@@ -347,7 +351,7 @@ def train(args):
                 "val_loss": valid_losses,
                 "lr": lrs,
             }
-            plot_history(history, "EEGNet",
+            plot_history(history, args.model,
                          f"{args.save_dir}/history_plot.png",
                          args.save_plot, args.show_plot)
         elif epoch % 50 == 0 and args.save_plot:
@@ -358,7 +362,7 @@ def train(args):
                 "val_loss": valid_losses,
                 "lr": lrs,
             }
-            plot_history(history, "EEGNet",
+            plot_history(history, args.model,
                          f"{args.save_dir}/history_plot.png", True, False)
 
     tensorboard.close()
@@ -378,66 +382,51 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-m", "--model", type=str, default="EEGNet",
-        help="The model to be trained. Options: ['EEGNet']."
-    )
+        help="The model to be trained. Options: ['EEGNet'].")
     parser.add_argument(
-        "-d", "--dataset", type=str, default="BCIC-IV-2a",
-        help="The dataset used for training."
-    )
+        "-d", "--dataset", type=str, default="Inner-Speech",
+        help="The dataset used for training.")
     # parser.add_argument(
     #     "-os", "--original-signal", type=bool, default=True,
-    #     help="Whether to use the original signal for training."
-    # )
+    #     help="Whether to use the original signal for training.")
     parser.add_argument(
-        "-mx", "--mixed-signal", type=bool, default=True,
-        help="Whether to use the mixed signal for training."
-    )
+        "-mx", "--mixed-signal", type=bool, default=False,
+        help="Whether to use the mixed signal for training.")
     parser.add_argument(
         "-ms", "--mixing-source", type=int, default=2,
-        help="The amount of signal source used to mix one mixed signal."
-    )
+        help="The amount of signal source used to mix one mixed signal.")
     parser.add_argument(
         "-md", "--mixing-duplicate", type=int, default=2,
-        help="The amount of mixed signal for training."
-    )
+        help="The amount of mixed signal for training.")
     parser.add_argument(
-        "-e", "--epochs", type=int, default=300,
-        help="The total epochs (iterations) of training."
-    )
+        "-e", "--epochs", type=int, default=400,
+        help="The total epochs (iterations) of training.")
     parser.add_argument(
-        "-bs", "--batch_size", type=int, default=32,
-        help="The batch size of training input."
-    )
+        "-bs", "--batch_size", type=int, default=64,
+        help="The batch size of training input.")
     parser.add_argument(
-        "-lr", "--learning_rate", type=float, default=8e-3,
-        help="The initial learning rate of the optimizer for training."
-    )
+        "-lr", "--learning_rate", type=float, default=1e-2,
+        help="The initial learning rate of the optimizer for training.")
     parser.add_argument(
-        "-ld", "--lr_decay", type=float, default=0.99993,
-        help="The decay rate of learning rate in each step of training."
-    )
+        "-ld", "--lr_decay", type=float, default=0.9995,
+        help="The decay rate of learning rate in each step of training.")
     parser.add_argument(
         "--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu",
-        help="The device used to train the model."
-    )
+        help="The device used to train the model.")
     parser.add_argument(
         "-nw", "--num_workers", type=int, default=8,
         help="The number of CPU workers to use.\n" + \
              "The total cost will be double due to train and valid dataloaders.\n" + \
-             "The total cost should be <= the number of your CPU threads."
-    )
+             "The total cost should be <= the number of your CPU threads.")
     parser.add_argument(
         "-sp", "--save_dir", type=str, default=None,
-        help="The path to save all history files."
-    )
+        help="The path to save all history files.")
     parser.add_argument(
         "-s", "--save_plot", type=bool, default=True,
-        help="Whether to save the training history plot."
-    )
+        help="Whether to save the training history plot.")
     parser.add_argument(
         "--show_plot", type=bool, default=True,
-        help="Whether to show the training history plot."
-    )
+        help="Whether to show the training history plot.")
 
     args = parser.parse_args()
     # assert args.original_signal and args.mixed_signal, \

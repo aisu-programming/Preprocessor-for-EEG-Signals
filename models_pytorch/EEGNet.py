@@ -36,16 +36,16 @@ class EEGNet(nn.Module):
             raise ValueError("dropoutType must be one of SpatialDropout2D or Dropout, passed as a string.")
         
         # Block 1
-        self.block1_conv2d = nn.Conv2d(1, F1, (1, kernLength), padding='same', bias=False)
+        self.block1_conv2d = nn.Conv2d(1, F1, (1, kernLength), padding="same", bias=False)
         self.block1_batchnorm = nn.BatchNorm2d(F1)
-        self.block1_depthwise = nn.Conv2d(F1, F1*D, (Chans, 1), groups=F1, bias=False, padding=(0,0),
-                                          padding_mode='zeros')
+        self.block1_depthwise = nn.Conv2d(F1, F1*D, (Chans, 1), groups=F1, bias=False,
+                                          padding=(0,0), padding_mode="zeros")
         self.block1_depthnorm = nn.BatchNorm2d(F1*D)
         self.block1_activation = nn.ELU()
         self.block1_avgpool = nn.AvgPool2d((1, 4))
         
         # Block 2
-        self.block2_sepconv2d = nn.Conv2d(F1*D, F2, (1, 16), groups=F1*D, bias=False, padding='same')
+        self.block2_sepconv2d = nn.Conv2d(F1*D, F2, (1, 16), groups=F1*D, bias=False, padding="same")
         self.block2_conv2d = nn.Conv2d(F2, F2, kernel_size=1, bias=False)
         self.block2_batchnorm = nn.BatchNorm2d(F2)
         self.block2_activation = nn.ELU()

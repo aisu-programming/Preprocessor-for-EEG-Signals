@@ -5,8 +5,9 @@ from typing import Dict, Tuple
 ##### Classes #####
 class BaseDataset():
     def __init__(self) -> None:
-        self.data   : Dict[str, Dict[str, np.ndarray]] = {}
-        self.labels : Dict[str, Dict[str, np.ndarray]] = {}
+        self.class_number: int = 0
+        self.data        : Dict[str, Dict[str, np.ndarray]] = {}
+        self.labels      : Dict[str, Dict[str, np.ndarray]] = {}
 
     @property
     def all_data_and_label(self) -> Tuple[np.ndarray, np.ndarray]:

@@ -25,6 +25,8 @@ class BcicIv2aDataset(BaseDataset):
             remove_EOG: bool = True,
         ) -> None:
         super().__init__()
+
+        self.class_number = 4
         
         if h_freq != np.Inf:
             assert h_freq <= 125, "Parameters 'l_freq' should be <= 125."
@@ -81,14 +83,14 @@ class BcicIv2aDataset(BaseDataset):
             if te == 'T':
                 if sub_id == 4:
                     self.labels[sub_id][sess_id] = np.array([
-                        [ lbl==cls for cls in range(4) ]
+                        [ lbl==cls for cls in range(self.class_number) ]
                             for lbl in epochs.events[:, -1] - 5 ])
                 else:
                     self.labels[sub_id][sess_id] = np.array([
-                        [ lbl==cls for cls in range(4) ]
+                        [ lbl==cls for cls in range(self.class_number) ]
                             for lbl in epochs.events[:, -1] - 7 ])
             else:
                 mat_path = Path(os.environ["DATASET_DIR"]) / "BCI Competition IV 2a" / f"A0{sub_id}E.mat"
                 self.labels[sub_id][sess_id] = np.array([
-                        [ lbl==cls for cls in range(4) ] for lbl in
+                        [ lbl==cls for cls in range(self.class_number) ] for lbl in
                             scipy.io.loadmat(str(mat_path))["classlabel"].flatten() - 1 ])
