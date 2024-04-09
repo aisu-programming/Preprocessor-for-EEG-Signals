@@ -253,13 +253,18 @@ def train(args):
 
     if args.dataset == "BCIC-IV-2a":
         dataset = BcicIv2aDataset()  # l_freq=4
-        inputs, truths = dataset.all_data_and_label
     elif args.dataset == "Inner-Speech":
         dataset = InnerSpeechDataset()
-        inputs, truths = dataset.all_data_and_label
-    inputs = np.expand_dims(inputs, axis=1)
+    # inputs, truths = dataset.all_data_and_label
+    # inputs = np.expand_dims(inputs, axis=1)
+    # train_inputs, train_truths, valid_inputs, valid_truths = split_data(inputs, truths)
+    train_inputs, train_truths, valid_inputs, valid_truths = \
+        dataset.splitted_data_and_label()
+    train_inputs = np.expand_dims(train_inputs, axis=1)
+    valid_inputs = np.expand_dims(valid_inputs, axis=1)
+    print(train_inputs.shape, train_truths.shape)
+    print(valid_inputs.shape, valid_truths.shape)
 
-    train_inputs, train_truths, valid_inputs, valid_truths = split_data(inputs, truths)
     my_train_dataset = MyMapDataset(train_inputs, train_truths,
                                     mixed_signal=args.mixed_signal,
                                     mixing_source=args.mixing_source,
@@ -285,8 +290,8 @@ def train(args):
     if args.model == "EEGNet":
         model = models_pytorch.EEGNet.EEGNet(
                     nb_classes=dataset.class_number,
-                    Chans=inputs.shape[2], Samples=inputs.shape[3],
-                    dropoutRate=0.75, kernLength=32, F1=8, D=8, F2=64,
+                    Chans=train_inputs.shape[2], Samples=train_inputs.shape[3],
+                    dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
                     dropoutType="Dropout").to(args.device)
     
     criterion: torch.nn.Module = \
@@ -385,7 +390,7 @@ if __name__ == "__main__":
         help="The model to be trained. Options: ['EEGNet'].")
     parser.add_argument(
         "-d", "--dataset", type=str, default="Inner-Speech",
-        help="The dataset used for training.")
+        help="The dataset used for training. Options: ['BCIC-IV-2a', 'Inner-Speech'].")
     # parser.add_argument(
     #     "-os", "--original-signal", type=bool, default=True,
     #     help="Whether to use the original signal for training.")
@@ -402,10 +407,10 @@ if __name__ == "__main__":
         "-e", "--epochs", type=int, default=400,
         help="The total epochs (iterations) of training.")
     parser.add_argument(
-        "-bs", "--batch_size", type=int, default=64,
+        "-bs", "--batch_size", type=int, default=32,
         help="The batch size of training input.")
     parser.add_argument(
-        "-lr", "--learning_rate", type=float, default=1e-2,
+        "-lr", "--learning_rate", type=float, default=1e-3,
         help="The initial learning rate of the optimizer for training.")
     parser.add_argument(
         "-ld", "--lr_decay", type=float, default=0.9995,

@@ -19,10 +19,10 @@ class InnerSpeechDataset(BaseDataset):
     def __init__(
             self,
             subject_id_list: List[int] = [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
-            # l_freq: int = 0,
-            # h_freq: int = 38,
+            l_freq: int = 0,
+            h_freq: int = 38,
             fs: int = 128,
-            t_start: float = 1.5,
+            t_start: float = 1.0,
             t_end  : float = 3.5,
             # 0 = "PRONOUNCED", 1 = "INNER", 2 = "VISUALIZED"
             condition_list: List[int] = [ 1 ],
@@ -52,19 +52,15 @@ class InnerSpeechDataset(BaseDataset):
                 root_dir / str_sub / str_ses / f"{str_sub}_{str_ses}_eeg-epo.fif",
                 verbose="WARNING")
             
+            if l_freq == -np.Inf: l_freq = data.info["highpass"]
+            if h_freq ==  np.Inf: h_freq = data.info["lowpass"]
 
 
-            # # if l_freq == -np.Inf:
-            # l_freq = data.info["highpass"]
-            # # if h_freq ==  np.Inf:
-            # h_freq = data.info["lowpass"]
-
-            # ### !!! Need to Check !!! ###
-            # # data.filter(l_freq, h_freq, fir_design="firwin")
-            # data.filter(l_freq, h_freq, method="iir", iir_params=dict(order=3, ftype="butter"), phase="zero", verbose=0)
-            # # , l_trans_bandwidth=l_freq, h_trans_bandwidth=10)
+            ### !!! Need to Check !!! ###
+            # data.filter(l_freq, h_freq, fir_design="firwin")
+            data.filter(l_freq, h_freq, method="iir", iir_params=dict(order=3, ftype="butter"), phase="zero", verbose=0)
+            # , l_trans_bandwidth=l_freq, h_trans_bandwidth=10)
             data = data.resample(fs)
-
 
 
             data = data._data

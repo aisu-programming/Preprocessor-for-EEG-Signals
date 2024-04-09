@@ -22,7 +22,7 @@ class BcicIv2aDataset(BaseDataset):
             subject_id_list: List[int] = [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
             l_freq: int = 0,
             h_freq: int = 38,
-            remove_EOG: bool = True,
+            # remove_EOG: bool = True,
         ) -> None:
         super().__init__()
 
@@ -55,11 +55,11 @@ class BcicIv2aDataset(BaseDataset):
             # , l_trans_bandwidth=l_freq, h_trans_bandwidth=10)
             raw = raw.resample(128)
 
-            if remove_EOG:
-                raw.info["bads"] += ["EOG-left", "EOG-central", "EOG-right"]
-                picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=False, stim=False, exclude="bads")
-            else:
-                picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=True, stim=False, exclude="bads")
+            # if remove_EOG:
+            raw.info["bads"] += ["EOG-left", "EOG-central", "EOG-right"]
+            picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=False, stim=False, exclude="bads")
+            # else:
+            #     picks = mne.pick_types(raw.info, meg=False, eeg=True, eog=True, stim=False, exclude="bads")
 
             events, _ = mne.events_from_annotations(raw, verbose=0)
 
