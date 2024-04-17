@@ -168,16 +168,16 @@ if __name__ == "__main__":
         "-e", "--epochs", type=int, default=300,
         help="The total epochs (iterations) of training.")
     parser.add_argument(
-        "-bs", "--batch_size", type=int, default=32,
+        "-bs", "--batch_size", type=int, default=16,
         help="The batch size of training input.")
     parser.add_argument(
-        "-ilr", "--initial_learning_rate", type=float, default=0.008,
+        "-ilr", "--initial_learning_rate", type=float, default=0.009,
         help="The initial learning rate of the optimizer for training.")
     parser.add_argument(
-        "-ds", "--decay_steps", type=int, default=1,
+        "-ds", "--decay_steps", type=int, default=1200,
         help="The decay step of the optimizer for training.")
     parser.add_argument(
-        "-dr", "--decay_rate", type=float, default=0.99993,
+        "-dr", "--decay_rate", type=float, default=0.9,
         help="The decay rate of the optimizer for training.")
     parser.add_argument(
         "-sd", "--save_dir", type=str, default=None,
