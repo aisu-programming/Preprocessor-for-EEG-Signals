@@ -11,9 +11,9 @@ from utils import BcicIv2aDataset
 from tensorflow.keras import utils
 from tensorflow.keras import backend
 backend.set_image_data_format("channels_last")
-from arl_eegmodels.EEGModels import EEGNet
+from EEGModels import EEGNet
 from sklearn.model_selection import train_test_split
-
+from tensorflow.keras.callbacks import ModelCheckpoint
 
 
 
@@ -90,6 +90,7 @@ def baseline_EEGNet(
 
     assert dataset in ["BCIC-IV-2a"], "Invalid value for parameter 'dataset'."
 
+    os.environ["DATASET_DIR"] = '/Users/rishienandhan/Documents/GitHub/Preprocessor-for-EEG-Signals/datasets'
     if dataset == "BCIC-IV-2a":
         dataset = BcicIv2aDataset()  # l_freq=4
 
@@ -112,6 +113,13 @@ def baseline_EEGNet(
         decay_steps=decay_steps,
         decay_rate=decay_rate,
     )
+
+    # Defining callback for saving model weights
+    model_checkpoint_callback = ModelCheckpoint(
+        filepath='model_ckpt',
+        monitor='val_accuracy',
+        mode='max',
+        save_best_only=True)
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
     model_8_2.compile(loss="categorical_crossentropy", optimizer=optimizer,
                       metrics=["accuracy"])
@@ -119,7 +127,7 @@ def baseline_EEGNet(
                             batch_size=batch_size,
                             epochs=epochs, verbose=1,
                             validation_data=(X_val, y_val),
-                            callbacks=[ RecordLearningRate() ])
+                            callbacks=[ RecordLearningRate(), model_checkpoint_callback ])
     plot_history(history.history, f"{save_path}/history_plot.png", save_plot, show_plot)
 
 
