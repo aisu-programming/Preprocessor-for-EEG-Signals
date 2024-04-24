@@ -22,14 +22,14 @@
 3. Rename the file "_.env_sample_" to "_.env_".
 
 ## Dataset
-- Automatically
+- Automatically download
   ```sh
   ./download_datasets.sh
   ```
-- Manually
+<!-- - Manually
   1. `BCI Competition IV 2a` - *place the contents of these downloads into the same folder with this name.* <br>
      - [Train subset with labels + Test subset without labels + Documents](https://www.bbci.de/competition/download/competition_iv/BCICIV_2a_gdf.zip) <br>
-     - [Test subset labels](https://www.bbci.de/competition/iv/results/ds2a/true_labels.zip)
+     - [Test subset labels](https://www.bbci.de/competition/iv/results/ds2a/true_labels.zip) -->
 
 ## Environment
 - With pip:

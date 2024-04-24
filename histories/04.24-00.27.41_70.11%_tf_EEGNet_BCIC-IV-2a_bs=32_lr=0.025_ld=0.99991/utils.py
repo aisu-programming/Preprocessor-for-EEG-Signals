@@ -42,6 +42,7 @@ def plot_confusion_matrix(
         title: str,
     ) -> None:
     cm_df = pd.DataFrame(cm, index=list(range(cm_length)), columns=list(range(cm_length)))
+    plt.rcParams.update(plt.rcParamsDefault)
     plt.figure(figsize=(6, 5))
     cm_image: plt.Axes = sn.heatmap(cm_df, annot=True, fmt=".0f")
     cm_image.set_xlabel("prediction", fontsize=10)
@@ -67,6 +68,7 @@ def plot_history(
     val_loss   = history["val_loss"]
     lr         = history["lr"]
 
+    plt.rcParams.update(plt.rcParamsDefault)
     fig, axs = plt.subplots(3, 1, figsize=(8, 6))
     fig.suptitle(f"Baseline: {model}")
     axs[0].plot(list(range(1, len(train_acc)+1)), train_acc,

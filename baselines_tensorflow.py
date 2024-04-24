@@ -6,18 +6,18 @@ import time
 import utils
 import shutil
 import argparse
+import warnings
 import numpy as np
-np.random.seed(0)
 import tensorflow as tf
-tf.random.set_seed(0)
-tf.keras.utils.set_random_seed(0)
 import models_tensorflow.EEGModels
 from tensorflow.keras import backend
-from tensorflow.keras import utils as tf_utils
 backend.set_image_data_format("channels_last")
-from sklearn.model_selection import train_test_split
-from libs.dataset import BcicIv2aDataset, InnerSpeechDataset
+from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, InnerSpeechDataset
 
+np.random.seed(0)
+tf.random.set_seed(0)
+tf.keras.utils.set_random_seed(0)
+warnings.filterwarnings(action="ignore", category=FutureWarning)
 
 
 
@@ -75,13 +75,13 @@ def train(
     if save_model:
         callbacks.extend([
             tf.keras.callbacks.ModelCheckpoint(
-                filepath=f"{save_dir}/best_val_acc",
+                filepath=f"{save_dir}/best_val_acc.h5",
                 monitor="val_accuracy",
                 mode="max",
                 save_weights_only=True,
                 save_best_only=True),
             tf.keras.callbacks.ModelCheckpoint(
-                filepath=f"{save_dir}/best_val_loss",
+                filepath=f"{save_dir}/best_val_loss.h5",
                 monitor="val_loss",
                 mode="min",
                 save_weights_only=True,
@@ -106,13 +106,15 @@ def train(
 
 def main(args: argparse.Namespace) -> None:
 
-    assert args.model in ["EEGNet", "DeepConvNet"], \
+    assert args.model in ["EEGNet", "PhysionetMI", "DeepConvNet"], \
         "Invalid value for parameter 'model'."
-    assert args.dataset in ["BCIC-IV-2a"], \
+    assert args.dataset in ["BCIC-IV-2a", "Inner-Speech"], \
         "Invalid value for parameter 'dataset'."
 
     if args.dataset == "BCIC-IV-2a":
         dataset = BcicIv2aDataset()  # l_freq=4
+    if args.dataset == "PhysionetMI":
+        dataset = PhysionetMIDataset()
     elif args.dataset == "Inner-Speech":
         dataset = InnerSpeechDataset()
 
@@ -163,21 +165,22 @@ if __name__ == "__main__":
         help="The model to be trained. Options: ['EEGNet', 'DeepConvNet'].")
     parser.add_argument(
         "-d", "--dataset", type=str, default="BCIC-IV-2a",
-        help="The dataset used for training. Options: ['BCIC-IV-2a', 'Inner-Speech'].")
+        help="The dataset used for training. " + \
+             "Options: ['BCIC-IV-2a', 'PhysionetMI', 'Inner-Speech'].")
     parser.add_argument(
-        "-e", "--epochs", type=int, default=300,
+        "-e", "--epochs", type=int, default=800,
         help="The total epochs (iterations) of training.")
     parser.add_argument(
         "-bs", "--batch_size", type=int, default=32,
         help="The batch size of training input.")
     parser.add_argument(
-        "-ilr", "--initial_learning_rate", type=float, default=0.008,
+        "-ilr", "--initial_learning_rate", type=float, default=0.03,
         help="The initial learning rate of the optimizer for training.")
     parser.add_argument(
         "-ds", "--decay_steps", type=int, default=1,
         help="The decay step of the optimizer for training.")
     parser.add_argument(
-        "-dr", "--decay_rate", type=float, default=0.99993,
+        "-dr", "--decay_rate", type=float, default=0.99992,
         help="The decay rate of the optimizer for training.")
     parser.add_argument(
         "-sd", "--save_dir", type=str, default=None,

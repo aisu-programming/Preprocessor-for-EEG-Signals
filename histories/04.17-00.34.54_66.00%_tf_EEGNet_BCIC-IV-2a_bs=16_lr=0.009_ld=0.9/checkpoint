@@ -1,2 +1,0 @@
-model_checkpoint_path: "best_val_acc"
-all_model_checkpoint_paths: "best_val_acc"
