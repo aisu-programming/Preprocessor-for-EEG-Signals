@@ -1,0 +1,14 @@
+model=EEGNet
+dataset=BcicIv2a
+mixed_signal=False
+mixing_source=2
+mixing_duplicate=2
+epochs=800
+batch_size=32
+learning_rate=0.025
+lr_decay=0.99991
+device=cuda:0
+num_workers=2
+save_dir=histories_tmp/04.24-17.09.43_pt_EEGNet_BcicIv2a_bs=32_lr=0.025_ld=0.99991_os
+save_plot=True
+show_plot=True

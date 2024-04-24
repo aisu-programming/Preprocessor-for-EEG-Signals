@@ -12,7 +12,7 @@ import tensorflow as tf
 import models_tensorflow.EEGModels
 from tensorflow.keras import backend
 backend.set_image_data_format("channels_last")
-from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, InnerSpeechDataset
+from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, Ofner2017Dataset  # , InnerSpeechDataset
 
 np.random.seed(0)
 tf.random.set_seed(0)
@@ -106,17 +106,20 @@ def train(
 
 def main(args: argparse.Namespace) -> None:
 
-    assert args.model in ["EEGNet", "PhysionetMI", "DeepConvNet"], \
+    assert args.model in ["EEGNet", "DeepConvNet"], \
         "Invalid value for parameter 'model'."
-    assert args.dataset in ["BCIC-IV-2a", "Inner-Speech"], \
+    # assert args.dataset in ["BcicIv2a", "PhysionetMI", "Ofner", "InnerSpeech"], \
+    assert args.dataset in ["BcicIv2a", "PhysionetMI", "Ofner"], \
         "Invalid value for parameter 'dataset'."
 
-    if args.dataset == "BCIC-IV-2a":
-        dataset = BcicIv2aDataset()  # l_freq=4
+    if args.dataset == "BcicIv2a":
+        dataset = BcicIv2aDataset()
     if args.dataset == "PhysionetMI":
         dataset = PhysionetMIDataset()
-    elif args.dataset == "Inner-Speech":
-        dataset = InnerSpeechDataset()
+    elif args.dataset == "Ofner":
+        dataset = Ofner2017Dataset()
+    # elif args.dataset == "InnerSpeech":
+    #     dataset = InnerSpeechDataset()
 
     train_inputs, train_truths, valid_inputs, valid_truths = \
         dataset.splitted_data_and_label()
@@ -124,6 +127,8 @@ def main(args: argparse.Namespace) -> None:
     valid_inputs = np.expand_dims(valid_inputs, axis=-1)
     print(train_inputs.shape, train_truths.shape)
     print(valid_inputs.shape, valid_truths.shape)
+
+    return
 
     if args.model == "EEGNet":
         model = models_tensorflow.EEGModels.EEGNet(
@@ -164,9 +169,10 @@ if __name__ == "__main__":
         "-m", "--model", type=str, default="EEGNet",
         help="The model to be trained. Options: ['EEGNet', 'DeepConvNet'].")
     parser.add_argument(
-        "-d", "--dataset", type=str, default="BCIC-IV-2a",
+        "-d", "--dataset", type=str, default="Ofner",
         help="The dataset used for training. " + \
-             "Options: ['BCIC-IV-2a', 'PhysionetMI', 'Inner-Speech'].")
+             "Options: ['BcicIv2a', 'PhysionetMI', 'Ofner'].")
+            #  "Options: ['BcicIv2a', 'PhysionetMI', 'Ofner', 'InnerSpeech'].")
     parser.add_argument(
         "-e", "--epochs", type=int, default=800,
         help="The total epochs (iterations) of training.")

@@ -23,7 +23,7 @@ import utils
 # from models_pytorch.EEGNet import EEGNet
 from torcheeg.models import EEGNet, GRU, LSTM
 from utils import Metric, plot_confusion_matrix, plot_history
-from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, Ofner2017Dataset  # , InnerSpeechDataset
+from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, Ofner2017Dataset
 
 
 
@@ -91,8 +91,8 @@ def backup_files(args: argparse.Namespace) -> None:
     os.makedirs(args.save_dir)
     shutil.copy(__file__, args.save_dir)
     shutil.copy(utils.__file__, args.save_dir)
-    shutil.copytree("libs", f"{args.save_dir}/libs")
     # shutil.copy(models_pytorch.EEGNet.__file__, args.save_dir)
+    # shutil.copy("", args.save_dir)
     with open(f"{args.save_dir}/args.txt", 'w') as record_txt:
         for key, value in args._get_kwargs():
             record_txt.write(f"{key}={value}\n")
@@ -251,7 +251,7 @@ def valid_epoch(
     return loss_metric.avg, acc_metric.avg, confusion_matrixs
 
 
-def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
+def train(args) -> Tuple[float, int]:
     # assert args.dataset in ["BcicIv2a", "PhysionetMI", "Ofner", "InnerSpeech"], \
     assert args.dataset in ["BcicIv2a", "PhysionetMI", "Ofner"], \
         "Invalid value for parameter 'dataset'."
@@ -317,6 +317,7 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
             num_electrodes=train_inputs.shape[2],
             hid_channels=64, 
             num_classes=dataset.class_number).to(args.device)
+
     
     criterion: torch.nn.Module = \
         torch.nn.CrossEntropyLoss()  # weight=train_weight_torch)
@@ -324,16 +325,6 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
         torch.optim.Adam(model.parameters(), lr=args.learning_rate)
     lr_scheduler: torch.optim.lr_scheduler.LRScheduler = \
         torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
-
-    args.save_dir = time.strftime("histories_tmp/%m.%d-%H.%M.%S_pt")
-    args.save_dir += f"_{args.model}_{args.dataset}"
-    args.save_dir += f"_bs={args.batch_size}"
-    args.save_dir += f"_lr={args.learning_rate}"
-    args.save_dir += f"_ld={args.lr_decay}"
-    args.save_dir += f"_os"
-    # if args.original_signal: args.save_dir += f"_os"
-    if args.mixed_signal: args.save_dir += f"_m{args.mixing_source}x{args.mixing_duplicate}"
-    backup_files(args)
 
     tensorboard = SummaryWriter(args.save_dir)
     best_valid_loss, best_valid_acc = np.inf, 0.0
@@ -409,7 +400,6 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
             plot_history(history, args.model,
                          f"{args.save_dir}/history_plot.png", True, False)
         if early_stop_counter >= 100:
-            print(f"Early stopping at epoch: {epoch}.")
             break
 
     tensorboard.close()
@@ -417,7 +407,7 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
     new_save_dir = new_save_dir.split('_', 1)
     new_save_dir = f"histories_tmp/{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
     os.rename(args.save_dir, new_save_dir)
-    return train_accs, train_losses, valid_accs, valid_losses
+    return best_valid_acc, epoch
 
 
 
@@ -448,7 +438,7 @@ if __name__ == "__main__":
         "-md", "--mixing-duplicate", type=int, default=2,
         help="The amount of mixed signal for training.")
     parser.add_argument(
-        "-e", "--epochs", type=int, default=1000,
+        "-e", "--epochs", type=int, default=800,
         help="The total epochs (iterations) of training.")
     parser.add_argument(
         "-bs", "--batch_size", type=int, default=32,
@@ -467,14 +457,14 @@ if __name__ == "__main__":
         help="The number of CPU workers to use.\n" + \
              "The total cost will be double due to train and valid dataloaders.\n" + \
              "The total cost should be <= the number of your CPU threads.")
-    # parser.add_argument(
-    #     "-sp", "--save_dir", type=str, default=None,
-    #     help="The path to save all history files.")
+    parser.add_argument(
+        "-sp", "--save_dir", type=str, default=None,
+        help="The path to save all history files.")
     parser.add_argument(
         "-s", "--save_plot", type=bool, default=True,
         help="Whether to save the training history plot.")
     parser.add_argument(
-        "--show_plot", type=bool, default=False,
+        "--show_plot", type=bool, default=True,
         help="Whether to show the training history plot.")
 
     args = parser.parse_args()
@@ -485,6 +475,18 @@ if __name__ == "__main__":
             "Parameter 'mixing_duplicate' must be >= 1 when using 'mixed_signal'."
         assert args.mixing_source >= 2, \
             "Parameter 'mixing_source' must be >= 2 when using 'mixed_signal'."
+
+    if args.save_dir is None:
+        args.save_dir = time.strftime("histories_tmp/%m.%d-%H.%M.%S_pt")
+        args.save_dir += f"_{args.model}_{args.dataset}"
+        args.save_dir += f"_bs={args.batch_size}"
+        args.save_dir += f"_lr={args.learning_rate}"
+        args.save_dir += f"_ld={args.lr_decay}"
+        args.save_dir += f"_os"
+        # if args.original_signal: args.save_dir += f"_os"
+        if args.mixed_signal: args.save_dir += f"_m{args.mixing_source}x{args.mixing_duplicate}"
+
+    backup_files(args)
 
     if args.model == "EEGNet":
         train(args)

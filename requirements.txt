@@ -12,3 +12,5 @@ seaborn
 
 moabb
 braindecode
+torcheeg
+optuna
