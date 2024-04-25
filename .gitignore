@@ -6,5 +6,4 @@ venv*
 
 datasets
 tmp
-histories_tmp
-histories_archived
+histories_*

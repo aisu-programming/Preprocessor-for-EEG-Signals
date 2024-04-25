@@ -21,7 +21,7 @@ warnings.filterwarnings(action="ignore", category=FutureWarning)
 
 import utils
 # from models_pytorch.EEGNet import EEGNet
-from torcheeg.models import EEGNet, GRU, LSTM
+from torcheeg.models import EEGNet, GRU, LSTM, ATCNet
 from utils import Metric, plot_confusion_matrix, plot_history
 from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, Ofner2017Dataset  # , InnerSpeechDataset
 
@@ -144,8 +144,9 @@ def train_epoch(
         optimizer: torch.optim.Optimizer,
         lr_scheduler: torch.optim.lr_scheduler.LRScheduler,
         device: Literal["cuda:0", "cpu"],
+        auto_hps: bool,
+        cm_length: int = 0,
         weight: list = None,
-        cm_length: int = 0
     ) -> Tuple[float, float, Union[np.ndarray, None]]:
     
     model = model.train()
@@ -159,7 +160,11 @@ def train_epoch(
     else:
         confusion_matrixs = None
 
-    pbar = tqdm(dataloader, desc="[TRAIN]")  # , ascii=True)
+    if not auto_hps:
+        pbar = tqdm(dataloader, desc="[TRAIN]")  # , ascii=True)
+    else:
+        pbar = dataloader
+        print("[TRAIN] ", end='')
     for batch_inputs, batch_truth in pbar:
 
         model.zero_grad()
@@ -185,10 +190,14 @@ def train_epoch(
             confusion_matrixs += \
                 confusion_matrix(batch_truth, batch_pred,
                                  labels=list(range(cm_length)))  # , sample_weight=weight)
-        pbar.set_description(f"[TRAIN] loss: {loss_metric.avg:.5f}, " + \
-                             f"Acc: {acc_metric.avg*100:.3f}%, " + \
-                             f"LR: {get_lr(optimizer):.10f}")
-        
+        if not auto_hps:
+            pbar.set_description(f"[TRAIN] loss: {loss_metric.avg:.5f}, " + \
+                                 f"Acc: {acc_metric.avg*100:.3f}%, " + \
+                                 f"LR: {get_lr(optimizer):.10f}")
+    if auto_hps:
+        print(f"loss: {loss_metric.avg:.5f}, " + \
+              f"Acc: {acc_metric.avg*100:.3f}%, " + \
+              f"LR: {get_lr(optimizer):.10f}")
     # with np.printoptions(linewidth=150, formatter={'float': '{:5.03f}'.format, 'int': '{:2} '.format}):
     #     print("pred :", batch_pred)
     #     print("truth:", batch_truth)
@@ -202,8 +211,9 @@ def valid_epoch(
         dataloader: List[Tuple[torch.Tensor, torch.Tensor]],
         criterion: torch.nn.Module,
         device: Literal["cuda:0", "cpu"],
+        auto_hps: bool,
+        cm_length: int = 0,
         weight: list = None,
-        cm_length: int = 0
     ) -> Tuple[float, float, Union[np.ndarray, None]]:
     
     model = model.eval()
@@ -217,7 +227,11 @@ def valid_epoch(
     else:
         confusion_matrixs = None
 
-    pbar = tqdm(dataloader, desc="[VALID]")  # , ascii=True)
+    if not auto_hps:
+        pbar = tqdm(dataloader, desc="[VALID]")  # , ascii=True)
+    else:
+        pbar = dataloader
+        print("[VALID] ", end='')
     for batch_inputs, batch_truth in pbar:
 
         model.zero_grad()
@@ -240,9 +254,14 @@ def valid_epoch(
             confusion_matrixs += \
                 confusion_matrix(batch_truth, batch_pred,
                                  labels=list(range(cm_length)))  # , sample_weight=weight)
-        pbar.set_description(f"[VALID] loss: {loss_metric.avg:.5f}, " + \
-                             f"Acc: {acc_metric.avg*100:.3f}%, ")
-        
+        if not auto_hps:
+            pbar.set_description(f"[VALID] loss: {loss_metric.avg:.5f}, " + \
+                                 f"Acc: {acc_metric.avg*100:.3f}%, ")
+    
+    if auto_hps:
+        print(f"loss: {loss_metric.avg:.5f}, " + \
+              f"Acc: {acc_metric.avg*100:.3f}%, ")
+
     # with np.printoptions(linewidth=150, formatter={'float': '{:5.03f}'.format, 'int': '{:2} '.format}):
     #     print("pred :", batch_pred)
     #     print("truth:", batch_truth)
@@ -302,21 +321,36 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
         #             dropoutRate=0.5, kernLength=32, F1=8, D=2, F2=16,
         #             dropoutType="Dropout").to(args.device)
         model = EEGNet(
+            kernel_1=32,
+            kernel_2=16,
+            dropout=0.5,
+            F1=8,
+            F2=16,
+            D=2,
             chunk_size=train_inputs.shape[3],
             num_electrodes=train_inputs.shape[2],
-            kernel_1=32, kernel_2=16,
-            dropout=0.5, F1=8, F2=16, D=2,
             num_classes=dataset.class_number).to(args.device)
     elif args.model == "GRU":
         model = GRU(
+            hid_channels=args.hid_channels,
             num_electrodes=train_inputs.shape[2],
-            hid_channels=64, 
             num_classes=dataset.class_number).to(args.device)
     elif args.model == "LSTM":
         model = LSTM(
+            hid_channels=args.hid_channels,
             num_electrodes=train_inputs.shape[2],
-            hid_channels=64, 
             num_classes=dataset.class_number).to(args.device)
+    elif args.model == "ATCNet":
+        model = ATCNet(
+            num_windows=args.num_windows,
+            conv_pool_size=7,
+            F1=16,
+            D=2,
+            tcn_kernel_size=4,
+            tcn_depth=2,
+            num_classes=dataset.class_number,
+            num_electrodes=train_inputs.shape[2],
+            chunk_size=train_inputs.shape[3]).to(args.device)
     
     criterion: torch.nn.Module = \
         torch.nn.CrossEntropyLoss()  # weight=train_weight_torch)
@@ -325,14 +359,6 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
     lr_scheduler: torch.optim.lr_scheduler.LRScheduler = \
         torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
 
-    args.save_dir = time.strftime("histories_tmp/%m.%d-%H.%M.%S_pt")
-    args.save_dir += f"_{args.model}_{args.dataset}"
-    args.save_dir += f"_bs={args.batch_size}"
-    args.save_dir += f"_lr={args.learning_rate}"
-    args.save_dir += f"_ld={args.lr_decay}"
-    args.save_dir += f"_os"
-    # if args.original_signal: args.save_dir += f"_os"
-    if args.mixed_signal: args.save_dir += f"_m{args.mixing_source}x{args.mixing_duplicate}"
     backup_files(args)
 
     tensorboard = SummaryWriter(args.save_dir)
@@ -342,10 +368,13 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
     for epoch in range(1, args.epochs+1):
         print(f"{epoch}/{args.epochs}")
 
-        train_results = train_epoch(model, my_train_dataLoader, criterion, optimizer,
-                                    lr_scheduler, args.device, cm_length=dataset.class_number)  # , train_weight)
-        valid_results = valid_epoch(model, my_valid_dataLoader, criterion, args.device,
-                                    cm_length=dataset.class_number)  # , valid_weight)
+        train_results = train_epoch(model, my_train_dataLoader,
+                                    criterion, optimizer, lr_scheduler,
+                                    args.device, args.auto_hps,
+                                    dataset.class_number)  # , train_weight)
+        valid_results = valid_epoch(model, my_valid_dataLoader,
+                                    criterion, args.device, args.auto_hps,
+                                    dataset.class_number)  # , valid_weight)
         
         train_loss, train_acc, train_cm = train_results
         valid_loss, valid_acc, valid_cm = valid_results
@@ -386,37 +415,38 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
                                       "Valid Confusion Matirx at Best Valid Acc")
             torch.save(model, f"{args.save_dir}/best_valid_acc.pt")
         
-        if (epoch == args.epochs or early_stop_counter >= 100) and \
+        if (epoch == args.epochs or (epoch > 500 and early_stop_counter >= 100)) and \
            (args.save_plot or args.show_plot):
-            history = {
-                "accuracy": train_accs,
-                "val_accuracy": valid_accs,
-                "loss": train_losses,
-                "val_loss": valid_losses,
-                "lr": lrs,
-            }
+            history = {"accuracy": train_accs,
+                       "val_accuracy": valid_accs,
+                       "loss": train_losses,
+                       "val_loss": valid_losses,
+                       "lr": lrs}
             plot_history(history, args.model,
                          f"{args.save_dir}/history_plot.png",
                          args.save_plot, args.show_plot)
         elif epoch % 50 == 0 and args.save_plot:
-            history = {
-                "accuracy": train_accs,
-                "val_accuracy": valid_accs,
-                "loss": train_losses,
-                "val_loss": valid_losses,
-                "lr": lrs,
-            }
+            history = {"accuracy": train_accs,
+                       "val_accuracy": valid_accs,
+                       "loss": train_losses,
+                       "val_loss": valid_losses,
+                       "lr": lrs}
             plot_history(history, args.model,
                          f"{args.save_dir}/history_plot.png", True, False)
-        if early_stop_counter >= 100:
+        if epoch > 500 and early_stop_counter >= 100:
             print(f"Early stopping at epoch: {epoch}.")
             break
 
     tensorboard.close()
-    new_save_dir = args.save_dir.replace("histories_tmp/", '')
-    new_save_dir = new_save_dir.split('_', 1)
-    new_save_dir = f"histories_tmp/{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
-    os.rename(args.save_dir, new_save_dir)
+    if not args.auto_hps:
+        new_save_dir = args.save_dir.replace("histories_tmp/", '')
+        new_save_dir = new_save_dir.split('_', 1)
+        new_save_dir = f"histories_tmp/{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
+        os.rename(args.save_dir, new_save_dir)
+    else:
+        new_save_dir = args.save_dir.split('_pt/', 1)
+        new_save_dir = f"{new_save_dir[0]}_pt/{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
+        os.rename(args.save_dir, new_save_dir)
     return train_accs, train_losses, valid_accs, valid_losses
 
 
@@ -428,8 +458,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-m", "--model", type=str, default="EEGNet",
-        help="The model to be trained. Options: ['EEGNet'].")
+        "-m", "--model", type=str, default="ATCNet",
+        help="The model to be trained. " + \
+             "Options: ['EEGNet', 'GRU', 'LSTM', 'ATCNet'].")
     parser.add_argument(
         "-d", "--dataset", type=str, default="BcicIv2a",
         help="The dataset used for training. " + \
@@ -485,6 +516,17 @@ if __name__ == "__main__":
             "Parameter 'mixing_duplicate' must be >= 1 when using 'mixed_signal'."
         assert args.mixing_source >= 2, \
             "Parameter 'mixing_source' must be >= 2 when using 'mixed_signal'."
+
+    args.save_dir = time.strftime("histories_tmp/%m.%d-%H.%M.%S_pt")
+    args.save_dir += f"_{args.model}_{args.dataset}"
+    args.save_dir += f"_bs={args.batch_size}"
+    args.save_dir += f"_lr={args.learning_rate:.4f}"
+    args.save_dir += f"_ld={args.lr_decay:.6f}"
+    args.save_dir += f"_os"
+    # if args.original_signal: args.save_dir += f"_os"
+    if args.mixed_signal: args.save_dir += f"_m{args.mixing_source}x{args.mixing_duplicate}"
+
+    args.auto_hps = False
 
     if args.model == "EEGNet":
         train(args)

@@ -23,6 +23,7 @@ class BcicIv2aDataset(BaseDataset):
             l_freq: int = 0,
             h_freq: int = 38,
             # remove_EOG: bool = True,
+            auto_hps: bool = False,
         ) -> None:
         super().__init__()
 
@@ -33,10 +34,15 @@ class BcicIv2aDataset(BaseDataset):
         import warnings
         warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-        pbar = tqdm(itertools.product(subject_id_list, ['T', 'E']),
-                    total=len(subject_id_list)*2)
+        if not auto_hps:
+            pbar = tqdm(itertools.product(subject_id_list, ['T', 'E']),
+                        total=len(subject_id_list)*2)
+        else:
+            pbar = itertools.product(subject_id_list, ['T', 'E'])
+            print("Loading BCIC IV 2a dataset... ", end='')
         for sub_id, te in pbar:
-            pbar.set_description(f"Loading BCIC IV 2a dataset - A0{sub_id}{te}")
+            if not auto_hps:
+                pbar.set_description(f"Loading BCIC IV 2a dataset - A0{sub_id}{te}")
 
             sess_id = 0 if te == 'T' else 1
             if sub_id not in self.data:
@@ -94,3 +100,5 @@ class BcicIv2aDataset(BaseDataset):
                 self.labels[sub_id][sess_id] = np.array([
                         [ lbl==cls for cls in range(self.class_number) ] for lbl in
                             scipy.io.loadmat(str(mat_path))["classlabel"].flatten() - 1 ])
+        
+        if auto_hps: print("Done.")
