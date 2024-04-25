@@ -7,3 +7,5 @@ venv*
 datasets
 tmp
 histories_*
+*.out
+*.err

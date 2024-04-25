@@ -276,11 +276,11 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
         "Invalid value for parameter 'dataset'."
 
     if args.dataset == "BcicIv2a":
-        dataset = BcicIv2aDataset()
+        dataset = BcicIv2aDataset(auto_hps=args.auto_hps)
     elif args.dataset == "PhysionetMI":
-        dataset = PhysionetMIDataset()
+        dataset = PhysionetMIDataset(auto_hps=args.auto_hps)
     elif args.dataset == "Ofner":
-        dataset = Ofner2017Dataset()
+        dataset = Ofner2017Dataset(auto_hps=args.auto_hps)
     # elif args.dataset == "InnerSpeech":
     #     dataset = InnerSpeechDataset()
 
@@ -494,10 +494,10 @@ if __name__ == "__main__":
         "--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu",
         help="The device used to train the model.")
     parser.add_argument(
-        "-nw", "--num_workers", type=int, default=2,
+        "-nw", "--num_workers", type=int, default=1,
         help="The number of CPU workers to use.\n" + \
-             "The total cost will be double due to train and valid dataloaders.\n" + \
-             "The total cost should be <= the number of your CPU threads.")
+             "The actual total cost will be doubled due to train and valid dataloaders.\n" + \
+             "The actual total cost should be <= the number of your CPU threads.")
     # parser.add_argument(
     #     "-sp", "--save_dir", type=str, default=None,
     #     help="The path to save all history files.")

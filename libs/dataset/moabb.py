@@ -28,7 +28,7 @@ warnings.simplefilter(action="ignore", category=ModuleNotFoundError)
 class MoabbDataset(BaseDataset):
     def __init__(
             self,
-            dataset: Literal["BcicIv2a", "PhysionetMI", "Ofner2017"],
+            dataset_name: Literal["BcicIv2a", "PhysionetMI", "Ofner2017"],
             subject_id_list: List[int],
             freq_low: int,
             freq_high: int,
@@ -37,17 +37,18 @@ class MoabbDataset(BaseDataset):
             t_end: Union[float, None],
             condition_list: List[int],
             events: List[str],
+            auto_hps: bool,
         ) -> None:
         super().__init__()
 
         if condition_list != [1]:
             raise NotImplementedError("Execution option isn't implemented.")
 
-        if dataset == "BcicIv2a":
+        if dataset_name == "BcicIv2a":
             dataset = BNCI2014_001()
-        elif dataset == "PhysionetMI":
+        elif dataset_name == "PhysionetMI":
             dataset = PhysionetMI()
-        elif dataset == "Ofner2017":
+        elif dataset_name == "Ofner2017":
             dataset = Ofner2017()
 
         self.class_number = len(events)
@@ -55,15 +56,21 @@ class MoabbDataset(BaseDataset):
                                 fmin=freq_low, fmax=freq_high,
                                 tmin=t_start, tmax=t_end, resample=sample_rate)
 
-        pbar = tqdm(subject_id_list)
+        if not auto_hps:
+            pbar = tqdm(subject_id_list)
+        else:
+            pbar = subject_id_list
+            print(f"Loading {dataset_name} dataset... ", end='')
         for sub_id in pbar:
-            pbar.set_description(f"Loading {dataset} dataset - {sub_id}")
+            if not auto_hps:
+                pbar.set_description(f"Loading {dataset_name} dataset - {sub_id}")
             if sub_id not in self.data:
                 self.data[sub_id] = {0: []}
                 self.labels[sub_id] = {0: []}
             data, label, _ = paradigm.get_data(dataset=dataset, subjects=[sub_id])
             self.data[sub_id][0] = data
             self.labels[sub_id][0] = np.array([ [ lbl==eve for eve in events ] for lbl in label ])
+        if auto_hps: print("Done.")
 
 
 
@@ -100,13 +107,14 @@ class PhysionetMIDataset(MoabbDataset):
             t_end: Union[float, None] = None,
             condition_list: List[int] = [ 1 ],
             class_list: List[int] = [ 0, 1, 2, 3 ],
+            auto_hps: bool = False,
         ) -> None:
         class_to_event = { 0: "left_hand", 1: "right_hand", 2: "hands", 3: "feet" }
         events = [ class_to_event[cid] for cid in class_list ]
         super().__init__("PhysionetMI", subject_id_list,
                          freq_low, freq_high,
                          sample_rate, t_start, t_end,
-                         condition_list, events)
+                         condition_list, events, auto_hps)
         """
         - Special trial number
           Most of the subject has 90 trials, except:
@@ -129,6 +137,7 @@ class Ofner2017Dataset(MoabbDataset):
             t_end: Union[float, None] = None,
             condition_list: List[int] = [ 1 ],
             class_list: List[int] = [ 0, 1, 2, 3, 4, 5 ],
+            auto_hps: bool = False,
         ) -> None:
         class_to_event = { 0: "right_elbow_flexion",
                            1: "right_elbow_extension",
@@ -140,5 +149,5 @@ class Ofner2017Dataset(MoabbDataset):
         super().__init__("Ofner2017", subject_id_list,
                          freq_low, freq_high,
                          sample_rate, t_start, t_end,
-                         condition_list, events)
+                         condition_list, events, auto_hps)
         return
