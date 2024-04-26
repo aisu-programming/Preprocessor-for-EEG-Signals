@@ -60,7 +60,7 @@ class MoabbDataset(BaseDataset):
             pbar = tqdm(subject_id_list)
         else:
             pbar = subject_id_list
-            print(f"Loading {dataset_name} dataset... ", end='')
+            print(f"Loading {dataset_name} dataset... ", end='', flush=True)
         for sub_id in pbar:
             if not auto_hps:
                 pbar.set_description(f"Loading {dataset_name} dataset - {sub_id}")
@@ -68,9 +68,11 @@ class MoabbDataset(BaseDataset):
                 self.data[sub_id] = {0: []}
                 self.labels[sub_id] = {0: []}
             data, label, _ = paradigm.get_data(dataset=dataset, subjects=[sub_id])
-            self.data[sub_id][0] = data
+            data_min = np.min(data, axis=2)[:, :, None]
+            data_max = np.max(data, axis=2)[:, :, None]
+            self.data[sub_id][0] = (data-data_min) / (data_max-data_min)
             self.labels[sub_id][0] = np.array([ [ lbl==eve for eve in events ] for lbl in label ])
-        if auto_hps: print("Done.")
+        if auto_hps: print("Done.", flush=True)
 
 
 

@@ -135,7 +135,7 @@ def get_weighted_acc(pred, truth, weight) -> float:
 def get_lr(optimizer: torch.optim.Optimizer) -> float:
     for param_group in optimizer.param_groups:
         return param_group["lr"]
-    
+
 
 def train_epoch(
         model: torch.nn.Module,
@@ -164,7 +164,9 @@ def train_epoch(
         pbar = tqdm(dataloader, desc="[TRAIN]")  # , ascii=True)
     else:
         pbar = dataloader
-        print("[TRAIN] ", end='')
+        print(f"[TRAIN] (length: {pbar.__len__():4d})", end='', flush=True)
+        start_time = time.time()
+        
     for batch_inputs, batch_truth in pbar:
 
         model.zero_grad()
@@ -197,7 +199,9 @@ def train_epoch(
     if auto_hps:
         print(f"loss: {loss_metric.avg:.5f}, " + \
               f"Acc: {acc_metric.avg*100:.3f}%, " + \
-              f"LR: {get_lr(optimizer):.10f}")
+              f"LR: {get_lr(optimizer):.10f}, " + \
+              f"time: {time.time()-start_time:.2f} s", flush=True)
+        
     # with np.printoptions(linewidth=150, formatter={'float': '{:5.03f}'.format, 'int': '{:2} '.format}):
     #     print("pred :", batch_pred)
     #     print("truth:", batch_truth)
@@ -231,7 +235,9 @@ def valid_epoch(
         pbar = tqdm(dataloader, desc="[VALID]")  # , ascii=True)
     else:
         pbar = dataloader
-        print("[VALID] ", end='')
+        print(f"[VALID] (length: {pbar.__len__():4d})", end='', flush=True)
+        start_time = time.time()
+
     for batch_inputs, batch_truth in pbar:
 
         model.zero_grad()
@@ -256,11 +262,12 @@ def valid_epoch(
                                  labels=list(range(cm_length)))  # , sample_weight=weight)
         if not auto_hps:
             pbar.set_description(f"[VALID] loss: {loss_metric.avg:.5f}, " + \
-                                 f"Acc: {acc_metric.avg*100:.3f}%, ")
+                                 f"Acc: {acc_metric.avg*100:.3f}%")
     
     if auto_hps:
         print(f"loss: {loss_metric.avg:.5f}, " + \
-              f"Acc: {acc_metric.avg*100:.3f}%, ")
+              f"Acc: {acc_metric.avg*100:.3f}%" + \
+              f"time: {time.time()-start_time:.2f} s", flush=True)
 
     # with np.printoptions(linewidth=150, formatter={'float': '{:5.03f}'.format, 'int': '{:2} '.format}):
     #     print("pred :", batch_pred)
@@ -270,7 +277,7 @@ def valid_epoch(
     return loss_metric.avg, acc_metric.avg, confusion_matrixs
 
 
-def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
+def train(args) -> Tuple[float, float, float, float]:
     # assert args.dataset in ["BcicIv2a", "PhysionetMI", "Ofner", "InnerSpeech"], \
     assert args.dataset in ["BcicIv2a", "PhysionetMI", "Ofner"], \
         "Invalid value for parameter 'dataset'."
@@ -434,20 +441,20 @@ def train(args) -> Tuple[List[float], List[float], List[float], List[float]]:
             plot_history(history, args.model,
                          f"{args.save_dir}/history_plot.png", True, False)
         if epoch > 500 and early_stop_counter >= 100:
-            print(f"Early stopping at epoch: {epoch}.")
+            print(f"Early stopping at epoch: {epoch}.", flush=True)
             break
 
     tensorboard.close()
     if not args.auto_hps:
-        new_save_dir = args.save_dir.replace("histories_tmp/", '')
+        new_save_dir = args.save_dir.replace("histories_cls_tmp/", '')
         new_save_dir = new_save_dir.split('_', 1)
-        new_save_dir = f"histories_tmp/{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
+        new_save_dir = f"histories_cls_tmp/{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
         os.rename(args.save_dir, new_save_dir)
     else:
         new_save_dir = args.save_dir.split('_pt/', 1)
         new_save_dir = f"{new_save_dir[0]}_pt/{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
         os.rename(args.save_dir, new_save_dir)
-    return train_accs, train_losses, valid_accs, valid_losses
+    return max(train_accs), min(train_losses), max(valid_accs), min(valid_losses)
 
 
 
@@ -458,11 +465,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-m", "--model", type=str, default="ATCNet",
+        "-m", "--model", type=str, default="EEGNet",
         help="The model to be trained. " + \
              "Options: ['EEGNet', 'GRU', 'LSTM', 'ATCNet'].")
     parser.add_argument(
-        "-d", "--dataset", type=str, default="BcicIv2a",
+        "-d", "--dataset", type=str, default="Ofner",
         help="The dataset used for training. " + \
              "Options: ['BcicIv2a', 'PhysionetMI', 'Ofner'].")
              # "Options: ['BcicIv2a', 'PhysionetMI', 'Ofner', 'InnerSpeech'].")
@@ -517,7 +524,7 @@ if __name__ == "__main__":
         assert args.mixing_source >= 2, \
             "Parameter 'mixing_source' must be >= 2 when using 'mixed_signal'."
 
-    args.save_dir = time.strftime("histories_tmp/%m.%d-%H.%M.%S_pt")
+    args.save_dir = time.strftime("histories_cls_tmp/%m.%d-%H.%M.%S_pt")
     args.save_dir += f"_{args.model}_{args.dataset}"
     args.save_dir += f"_bs={args.batch_size}"
     args.save_dir += f"_lr={args.learning_rate:.4f}"
@@ -528,5 +535,4 @@ if __name__ == "__main__":
 
     args.auto_hps = False
 
-    if args.model == "EEGNet":
-        train(args)
+    train(args)

@@ -42,7 +42,7 @@ def plot_confusion_matrix(
         title: str,
     ) -> None:
     cm_df = pd.DataFrame(cm, index=list(range(cm_length)), columns=list(range(cm_length)))
-    plt.rcParams.update(plt.rcParamsDefault)
+    # plt.rcParams.update(plt.rcParamsDefault)
     plt.figure(figsize=(6, 5))
     cm_image: plt.Axes = sn.heatmap(cm_df, annot=True, fmt=".0f")
     cm_image.set_xlabel("prediction", fontsize=10)
@@ -90,6 +90,74 @@ def plot_history(
     axs[2].set_title("Learning Rate")
     axs[2].set_yscale("log")
     axs[2].grid()
+
+    plt.tight_layout()
+    if show: plt.show()
+    if save: fig.savefig(output_path)
+    return
+
+
+def plot_history_sca(
+        history: Dict[str, list],
+        title: str,
+        output_path: str,
+        save: bool = True,
+        show: bool = False,
+    ) -> None:
+
+    train_acc      = history["accuracy"]
+    train_loss     = history["loss"]
+    train_sig_loss = history["sig_loss"]
+    train_cls_loss = history["cls_loss"]
+    val_acc        = history["val_accuracy"]
+    val_loss       = history["val_loss"]
+    val_sig_loss   = history["val_sig_loss"]
+    val_cls_loss   = history["val_cls_loss"]
+    lr             = history["lr"]
+
+    plt.rcParams.update(plt.rcParamsDefault)
+    fig, axs = plt.subplots(5, 1, figsize=(8, 10))
+    fig.suptitle(title)
+    
+    axs[0].plot(list(range(1, len(train_acc)+1)), train_acc,
+                label=f"best train acc={max(train_acc)*100:.2f}% @ {np.argmax(train_acc)+1}")
+    axs[0].plot(list(range(1, len(val_acc)+1)), val_acc,
+                label=f"best valid acc={max(val_acc)*100:.2f}% @ {np.argmax(val_acc)+1}")
+    axs[0].set_title("Accuracies")
+    axs[0].legend()
+    axs[0].grid()
+
+    axs[1].plot(list(range(1, len(train_loss)+1)), train_loss,
+                label=f"best train loss={min(train_loss):.5f} @ {np.argmin(train_loss)+1}")
+    axs[1].plot(list(range(1, len(val_loss)+1)), val_loss,
+                label=f"best valid loss={min(val_loss):.5f} @ {np.argmin(val_loss)+1}")
+    axs[1].set_title("Losses")
+    axs[1].set_yscale("log")
+    axs[1].legend()
+    axs[1].grid()
+
+    axs[2].plot(list(range(1, len(train_sig_loss)+1)), train_sig_loss,
+                label=f"best train signal loss={min(train_sig_loss):.5f} @ {np.argmin(train_sig_loss)+1}")
+    axs[2].plot(list(range(1, len(val_sig_loss)+1)), val_sig_loss,
+                label=f"best valid signal loss={min(val_sig_loss):.5f} @ {np.argmin(val_sig_loss)+1}")
+    axs[2].set_title("Signal Losses")
+    axs[2].set_yscale("log")
+    axs[2].legend()
+    axs[2].grid()
+
+    axs[3].plot(list(range(1, len(train_cls_loss)+1)), train_cls_loss,
+                label=f"best train classification loss={min(train_cls_loss):.5f} @ {np.argmin(train_cls_loss)+1}")
+    axs[3].plot(list(range(1, len(val_cls_loss)+1)), val_cls_loss,
+                label=f"best valid classification loss={min(val_cls_loss):.5f} @ {np.argmin(val_cls_loss)+1}")
+    axs[3].set_title("Losses")
+    axs[3].set_yscale("log")
+    axs[3].legend()
+    axs[3].grid()
+
+    axs[4].plot(list(range(1, len(lr)+1)), lr)
+    axs[4].set_title("Learning Rate")
+    axs[4].set_yscale("log")
+    axs[4].grid()
 
     plt.tight_layout()
     if show: plt.show()

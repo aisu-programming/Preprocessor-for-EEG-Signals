@@ -2,7 +2,7 @@ import time
 import torch
 import optuna
 import argparse
-from baselines_pytorch import train
+from train_classifier_pt import train
 
 
 
@@ -27,7 +27,7 @@ def args_set_defaults(args):
 
 
 def set_args_save_dir(args):
-    args.save_dir = time.strftime(f"histories_search/{args.study_name}/")
+    args.save_dir = time.strftime(f"histories_cls_search/{args.study_name}/")
     args.save_dir += f"bs={args.batch_size:03d}"
     args.save_dir += f"_lr={args.learning_rate:.4f}"
     args.save_dir += f"_ld={args.lr_decay:.6f}"

@@ -1,13 +1,10 @@
 import optuna
 import plotly.io as pio
-# pio.kaleido.scope.default_format = "svg"
 pio.kaleido.scope.default_width  = 1200
 pio.kaleido.scope.default_height = 1200
-# import matplotlib.pyplot as plt
-# from optuna.visualization import plot_contour
 
-MODEL = ["EEGNet", "GRU", "LSTM", "ATCNet"][3]
-DATASET = ["BcicIv2a", "PhysionetMI", "Ofner"][0]
+MODEL = ["EEGNet", "GRU", "LSTM", "ATCNet"][0]
+DATASET = ["BcicIv2a", "PhysionetMI", "Ofner"][2]
 FRAMEWORK = ["pt", "tf"][0]
 STUDY_NAME = f"{MODEL}_{DATASET}_{FRAMEWORK}"
 

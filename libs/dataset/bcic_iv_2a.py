@@ -39,7 +39,7 @@ class BcicIv2aDataset(BaseDataset):
                         total=len(subject_id_list)*2)
         else:
             pbar = itertools.product(subject_id_list, ['T', 'E'])
-            print("Loading BCIC IV 2a dataset... ", end='')
+            print("Loading BCIC IV 2a dataset... ", end='', flush=True)
         for sub_id, te in pbar:
             if not auto_hps:
                 pbar.set_description(f"Loading BCIC IV 2a dataset - A0{sub_id}{te}")
@@ -81,10 +81,13 @@ class BcicIv2aDataset(BaseDataset):
                                 picks=picks, baseline=None, preload=True, verbose=0,
                                 on_missing="warn")  # "ignore"
 
-            try: 
-                self.data[sub_id][sess_id] = epochs.get_data(copy=False) # set explicitly due to warning
+            try:
+                data = epochs.get_data(copy=False) # set explicitly due to warning
             except TypeError:
-                self.data[sub_id][sess_id] = epochs.get_data()
+                data = epochs.get_data()
+            data_min = np.min(data, axis=2)[:, :, None]
+            data_max = np.max(data, axis=2)[:, :, None]
+            self.data[sub_id][sess_id] = (data-data_min) / (data_max-data_min)
 
             if te == 'T':
                 if sub_id == 4:
@@ -101,4 +104,4 @@ class BcicIv2aDataset(BaseDataset):
                         [ lbl==cls for cls in range(self.class_number) ] for lbl in
                             scipy.io.loadmat(str(mat_path))["classlabel"].flatten() - 1 ])
         
-        if auto_hps: print("Done.")
+        if auto_hps: print("Done.", flush=True)

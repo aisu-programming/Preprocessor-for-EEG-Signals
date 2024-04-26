@@ -6,6 +6,11 @@ venv*
 
 datasets
 tmp
-histories_*
+histories_cls_archived
+histories_cls_tmp
+histories_cls_search
+histories_pre_archived
+histories_pre_tmp
+histories_pre_search
 *.out
 *.err
