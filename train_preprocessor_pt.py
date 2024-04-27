@@ -12,7 +12,6 @@ from tqdm import tqdm
 from typing import Union, Tuple, Literal
 from sklearn.metrics import confusion_matrix
 from torch.utils.data import Dataset
-from torch.utils.tensorboard import SummaryWriter
 
 torch.manual_seed(0)
 random.seed(0)
@@ -22,7 +21,7 @@ warnings.filterwarnings(action="ignore", category=FutureWarning)
 import utils
 from utils import Metric, plot_confusion_matrix, plot_history_sca
 from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, Ofner2017Dataset
-from models_pytorch.preprocessor_transformer import EEGTransformer
+from models_pytorch.preprocessor import LSTM, EEGTransformer
 
 
 
@@ -65,7 +64,6 @@ def get_lr(optimizer: torch.optim.Optimizer) -> float:
 def train_epoch(
         preprocessor: torch.nn.Module,
         classifier: torch.nn.Module,
-        # dataloader: List[Tuple[torch.Tensor, torch.Tensor]],
         dataloader: torch.utils.data.DataLoader,
         sig_criterion: torch.nn.Module,
         cls_criterion: torch.nn.Module,
@@ -102,7 +100,7 @@ def train_epoch(
 
         batch_adjsig: torch.Tensor = preprocessor(batch_inputs)
         batch_pred: torch.Tensor = classifier(batch_adjsig.unsqueeze(1))
-        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * 1e10
+        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * args.sig_loss_factor
         cls_loss: torch.Tensor = cls_criterion(batch_pred, batch_truth)
         loss = sig_loss + cls_loss
         loss.backward()
@@ -133,7 +131,7 @@ def train_epoch(
               f"cls_loss: {cls_loss_metric.avg:.5f}, " + \
               f"Acc: {acc_metric.avg*100:.3f}%, " + \
               f"LR: {get_lr(optimizer):.10f}, " + \
-              f"time: {time.time()-start_time:.2f} s", flush=True)
+              f"time: {time.time()-start_time:.2f}s", flush=True)
     
     return sig_loss_metric.avg, cls_loss_metric.avg, loss_metric.avg, \
            acc_metric.avg, confusion_matrixs
@@ -142,7 +140,6 @@ def train_epoch(
 def valid_epoch(
         preprocessor: torch.nn.Module,
         classifier: torch.nn.Module,
-        # dataloader: List[Tuple[torch.Tensor, torch.Tensor]],
         dataloader: torch.utils.data.DataLoader,
         sig_criterion: torch.nn.Module,
         cls_criterion: torch.nn.Module,
@@ -176,7 +173,7 @@ def valid_epoch(
 
         batch_adjsig: torch.Tensor = preprocessor(batch_inputs)
         batch_pred: torch.Tensor = classifier(batch_adjsig.unsqueeze(1))
-        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * 1e10
+        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * args.sig_loss_factor
         cls_loss: torch.Tensor = cls_criterion(batch_pred, batch_truth)
         loss = sig_loss + cls_loss
         sig_loss_metric.append(sig_loss.item())
@@ -202,7 +199,7 @@ def valid_epoch(
               f"sig_loss: {sig_loss_metric.avg:.5f}, " + \
               f"cls_loss: {cls_loss_metric.avg:.5f}, " + \
               f"Acc: {acc_metric.avg*100:.3f}%, " + \
-              f"time: {time.time()-start_time:.2f} s", flush=True)
+              f"time: {time.time()-start_time:.2f}s", flush=True)
     
     return sig_loss_metric.avg, cls_loss_metric.avg, loss_metric.avg, \
            acc_metric.avg, confusion_matrixs
@@ -219,8 +216,6 @@ def train(args) -> Tuple[float, float, float, float]:
 
     train_inputs, train_truths, valid_inputs, valid_truths = \
         dataset.splitted_data_and_label()
-    # train_inputs = np.expand_dims(train_inputs, axis=1)
-    # valid_inputs = np.expand_dims(valid_inputs, axis=1)
 
     print(train_inputs.shape, train_truths.shape)
     print(valid_inputs.shape, valid_truths.shape)
@@ -231,13 +226,21 @@ def train(args) -> Tuple[float, float, float, float]:
     my_train_dataLoader = torch.utils.data.DataLoader(
         my_train_dataset, args.batch_size, shuffle=True,
         pin_memory=True, drop_last=False,
-        num_workers=args.num_workers, persistent_workers=True)
+        num_workers=args.num_workers)
     my_valid_dataLoader = torch.utils.data.DataLoader(
         my_valid_dataset, args.batch_size, shuffle=True,
         pin_memory=True, drop_last=False,
-        num_workers=args.num_workers, persistent_workers=True)
+        num_workers=args.num_workers)
 
-    if args.preprocessor == "Transformer":
+    if args.preprocessor == "LSTM":
+        preprocessor = LSTM(
+            channels=train_inputs.shape[1],
+            samples=train_inputs.shape[2],
+            num_layers=args.num_layers,
+            num_heads=args.num_heads,
+            ffn_dim=args.ffn_dim,
+            dropout=args.dropout).to(args.device)
+    elif args.preprocessor == "Transformer":
         preprocessor = EEGTransformer(
             channels=train_inputs.shape[1],
             samples=train_inputs.shape[2],
@@ -259,7 +262,6 @@ def train(args) -> Tuple[float, float, float, float]:
 
     backup_files(args)
 
-    # tensorboard = SummaryWriter(args.save_dir)
     best_valid_loss, best_valid_acc = np.inf, 0.0
     train_sig_losses, train_cls_losses, train_losses, train_accs = [], [], [], []
     valid_sig_losses, valid_cls_losses, valid_losses, valid_accs, lrs = [], [], [], [], []
@@ -273,12 +275,12 @@ def train(args) -> Tuple[float, float, float, float]:
                                     sig_criterion, cls_criterion,
                                     optimizer, lr_scheduler,
                                     args.device, args.auto_hps,
-                                    dataset.class_number)  # , train_weight)
+                                    dataset.class_number)
         valid_results = valid_epoch(preprocessor, classifier,
                                     my_valid_dataLoader,
                                     sig_criterion, cls_criterion,
                                     args.device, args.auto_hps,
-                                    dataset.class_number)  # , valid_weight)
+                                    dataset.class_number)
         
         train_sig_loss, train_cls_loss, train_loss, train_acc, train_cm = train_results
         valid_sig_loss, valid_cls_loss, valid_loss, valid_acc, valid_cm = valid_results
@@ -292,12 +294,6 @@ def train(args) -> Tuple[float, float, float, float]:
         valid_losses.append(valid_loss)
         valid_accs.append(valid_acc)
         lrs.append(get_lr(optimizer))
-        
-        # tensorboard.add_scalar("0_Losses+LR/0_Train",  train_loss,        epoch)
-        # tensorboard.add_scalar("0_Losses+LR/1_Valid",  valid_loss,        epoch)
-        # tensorboard.add_scalar("0_Losses+LR/2_LR",     get_lr(optimizer), epoch)
-        # tensorboard.add_scalar("1_Accuracies/0_Train", train_acc,         epoch)
-        # tensorboard.add_scalar("1_Accuracies/1_Valid", valid_acc,         epoch)
 
         early_stop_counter += 1
         if valid_loss < best_valid_loss:
@@ -353,7 +349,6 @@ def train(args) -> Tuple[float, float, float, float]:
             print(f"Early stopping at epoch: {epoch}.", flush=True)
             break
 
-    # tensorboard.close()
     if not args.auto_hps:
         new_save_dir = args.save_dir.replace("histories_pre_tmp/", '')
         new_save_dir = new_save_dir.split('_', 1)
@@ -375,14 +370,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-p", "--preprocessor", type=str, default="Transformer",
-        help="The preprocessor to be used. Options: ['Transformer'].")
+        help="The preprocessor to be used. Options: ['LSTM', 'Transformer'].")
+    parser.add_argument(
+        "-s", "--sig_loss_factor", type=int, default=10,
+        help="The x value of `loss = x * sig_loss + cls_loss`.")
     parser.add_argument(
         "-c", "--classifier", type=str, default="EEGNet",
         help="The classifier to be used. " + \
              "Options: ['EEGNet', 'GRU', 'LSTM', 'ATCNet'].")
     parser.add_argument(
         "-cw", "--classifier_weights", type=str,
-        default="histories/04.24-17.54.06_70.45%_pt_EEGNet_BcicIv2a_bs=16_lr=0.03_ld=0.99993_os/best_valid_acc.pt",
+        default="histories_cls_tmp/04.26-18.46.34_61.55%_pt_EEGNet_BcicIv2a_bs=32_lr=0.0250_ld=0.999910/best_valid_acc.pt",
         help="The path of the weights of the classifier to be used.")
     parser.add_argument(
         "-d", "--dataset", type=str, default="BcicIv2a",
@@ -409,25 +407,28 @@ if __name__ == "__main__":
              "The actual total cost will be doubled due to train and valid dataloaders.\n" + \
              "The actual total cost should be <= the number of your CPU threads.")
     parser.add_argument(
-        "-s", "--save_plot", type=bool, default=True,
+        "--save_plot", type=bool, default=True,
         help="Whether to save the training history plot.")
     parser.add_argument(
         "--show_plot", type=bool, default=False,
         help="Whether to show the training history plot.")
+    parser.add_argument(
+        "--auto_hps", type=bool, default=False,
+        help="Whether doing the auto hyperparameter searching.")
 
     args = parser.parse_args()
 
     args.save_dir = time.strftime("histories_pre_tmp/%m.%d-%H.%M.%S_pt")
     args.save_dir += f"_{args.preprocessor}_{args.classifier}_{args.dataset}"
+    args.save_dir += f"_slf={args.sig_loss_factor}"
     args.save_dir += f"_bs={args.batch_size}"
     args.save_dir += f"_lr={args.learning_rate:.4f}"
     args.save_dir += f"_ld={args.lr_decay:.6f}"
 
-    args.auto_hps = False
     if args.preprocessor == "Transformer":
-        args.num_layers = 2
-        args.num_heads = 6
-        args.ffn_dim = 128
-        args.dropout = 0.1
+        args.num_layers = 1
+        args.num_heads = 3
+        args.ffn_dim = 64
+        args.dropout = 0.5
 
     train(args)
