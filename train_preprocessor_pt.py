@@ -319,7 +319,7 @@ def train(args) -> Tuple[float, float, float, float]:
                                       "Valid Confusion Matirx at Best Valid Acc")
             torch.save(preprocessor, f"{args.save_dir}/best_valid_acc.pt")
         
-        if (epoch == args.epochs or (epoch > 500 and early_stop_counter >= 100)) and \
+        if (epoch == args.epochs or (epoch > 150 and early_stop_counter >= 50)) and \
            (args.save_plot or args.show_plot):
             history = {"accuracy": train_accs,
                        "sig_loss": train_sig_losses,
@@ -345,7 +345,7 @@ def train(args) -> Tuple[float, float, float, float]:
                        "lr": lrs}
             plot_history_sca(history, f"{args.preprocessor}_{args.classifier}_{args.dataset}",
                              f"{args.save_dir}/history_plot.png", True, False)
-        if epoch > 500 and early_stop_counter >= 100:
+        if epoch > 150 and early_stop_counter >= 50:
             print(f"Early stopping at epoch: {epoch}.", flush=True)
             break
 
@@ -387,7 +387,7 @@ if __name__ == "__main__":
         help="The dataset used for training. " + \
              "Options: ['BcicIv2a', 'PhysionetMI', 'Ofner'].")
     parser.add_argument(
-        "-e", "--epochs", type=int, default=1000,
+        "-e", "--epochs", type=int, default=600,
         help="The total epochs (iterations) of training.")
     parser.add_argument(
         "-bs", "--batch_size", type=int, default=32,
@@ -418,17 +418,26 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    if args.preprocessor == "LSTM":
+        args.num_layers  = 3
+        args.hidden_size = 64
+        args.dropout     = 0.5
+    elif args.preprocessor == "Transformer":
+        args.num_layers = 1
+        args.num_heads  = 3
+        args.ffn_dim    = 64
+        args.dropout    = 0.5
+
     args.save_dir = time.strftime("histories_pre_tmp/%m.%d-%H.%M.%S_pt")
     args.save_dir += f"_{args.preprocessor}_{args.classifier}_{args.dataset}"
-    args.save_dir += f"_slf={args.sig_loss_factor}"
-    args.save_dir += f"_bs={args.batch_size}"
+    args.save_dir += f"_slf={args.sig_loss_factor:03d}"
+    args.save_dir += f"_bs={args.batch_size:03d}"
     args.save_dir += f"_lr={args.learning_rate:.4f}"
     args.save_dir += f"_ld={args.lr_decay:.6f}"
-
-    if args.preprocessor == "Transformer":
-        args.num_layers = 1
-        args.num_heads = 3
-        args.ffn_dim = 64
-        args.dropout = 0.5
+    if args.preprocessor == "LSTM":
+        args.save_dir += f"_nl={args.num_layers}_hs={args.hidden_size:03d}_do={args.dropout:.2f}"
+    elif args.preprocessor == "Transformer":
+        args.save_dir += f"_nl={args.num_layers}_nh={args.num_heads:02d}"
+        args.save_dir += f"_fd={args.ffn_dim:03d}_do={args.dropout:.2f}"
 
     train(args)

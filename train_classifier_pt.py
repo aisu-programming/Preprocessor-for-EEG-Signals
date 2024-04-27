@@ -11,7 +11,7 @@ import torch.utils.data
 from tqdm import tqdm
 from typing import Union, Tuple, Literal
 from sklearn.metrics import confusion_matrix
-from torcheeg.models import EEGNet, GRU, LSTM, ATCNet
+from torcheeg.models import EEGNet, ATCNet
 from torch.utils.data import Dataset
 
 torch.manual_seed(0)
@@ -22,6 +22,8 @@ warnings.filterwarnings(action="ignore", category=FutureWarning)
 import utils
 from utils import Metric, plot_confusion_matrix, plot_history
 from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, Ofner2017Dataset
+from models_pytorch.gru import GRU
+from models_pytorch.lstm import LSTM
 
 
 
@@ -226,11 +228,13 @@ def train(args) -> Tuple[float, float, float, float]:
     elif args.model == "GRU":
         model = GRU(
             hid_channels=args.hid_channels,
+            num_layers=args.num_layers,
             num_electrodes=train_inputs.shape[1],
             num_classes=dataset.class_number).to(args.device)
     elif args.model == "LSTM":
         model = LSTM(
             hid_channels=args.hid_channels,
+            num_layers=args.num_layers,
             num_electrodes=train_inputs.shape[1],
             num_classes=dataset.class_number).to(args.device)
     elif args.model == "ATCNet":
@@ -379,12 +383,6 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    args.save_dir = time.strftime("histories_cls_tmp/%m.%d-%H.%M.%S_pt")
-    args.save_dir += f"_{args.model}_{args.dataset}"
-    args.save_dir += f"_bs={args.batch_size}"
-    args.save_dir += f"_lr={args.learning_rate:.4f}"
-    args.save_dir += f"_ld={args.lr_decay:.6f}"
-
     if args.model == "EEGNet":
         args.kernel_1 = 32
         args.kernel_2 = 16
@@ -393,6 +391,7 @@ if __name__ == "__main__":
         args.F2 = 16
         args.D = 2
     elif args.model in ["GRU", "LSTM"]:
+        args.num_layers = 2
         args.hid_channels = 64
     elif args.model == "ATCNet":
         args.num_windows = 3
@@ -401,5 +400,18 @@ if __name__ == "__main__":
         args.D = 2
         args.tcn_kernel_size = 4
         args.tcn_depth = 2
+
+    args.save_dir = time.strftime("histories_cls_tmp/%m.%d-%H.%M.%S_pt")
+    args.save_dir += f"_{args.model}_{args.dataset}"
+    args.save_dir += f"_bs={args.batch_size:03d}"
+    args.save_dir += f"_lr={args.learning_rate:.4f}"
+    args.save_dir += f"_ld={args.lr_decay:.6f}"
+    if args.model == "EEGNet":
+        args.save_dir += f"_k1={args.kernel_1}_k2={args.kernel_2}"
+        args.save_dir += f"_do={args.dropout:.02f}"
+    elif args.model in ["GRU", "LSTM"]:
+        args.save_dir += f"_nl={args.num_layers}_hc={args.hid_channels:03d}"
+    elif args.model == "ATCNet":
+        args.save_dir += f"_nw={args.num_windows}"
 
     train(args)

@@ -32,10 +32,10 @@ def set_args_save_dir(args):
     args.save_dir += f"_lr={args.learning_rate:.4f}"
     args.save_dir += f"_ld={args.lr_decay:.6f}"
     if args.preprocessor == "LSTM":
-        args.save_dir += f"_nl={args.num_layers}_hs={args.hidden_size}_do={args.dropout}"
+        args.save_dir += f"_nl={args.num_layers}_hs={args.hidden_size:03d}_do={args.dropout:.2f}"
     elif args.preprocessor == "Transformer":
-        args.save_dir += f"_nl={args.num_layers}_nh={args.num_heads}"
-        args.save_dir += f"_fd={args.ffn_dim}_do={args.dropout}"
+        args.save_dir += f"_nl={args.num_layers}_nh={args.num_heads:02d}"
+        args.save_dir += f"_fd={args.ffn_dim:03d}_do={args.dropout:.2f}"
     return args
 
 

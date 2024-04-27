@@ -33,8 +33,8 @@ def set_args_save_dir(args):
         args.save_dir += f"_k1={args.kernel_1}_k2={args.kernel_2}"
         args.save_dir += f"_do={args.dropout:.02f}"
     elif args.model in ["GRU", "LSTM"]:
-        args.save_dir += f"_hc={args.hid_channels:03d}"
-    elif args.model in ["ATCNet"]:
+        args.save_dir += f"_nl={args.num_layers}_hc={args.hid_channels:03d}"
+    elif args.model == "ATCNet":
         args.save_dir += f"_nw={args.num_windows}"
     return args
 
@@ -50,8 +50,9 @@ def objective(trial, args):
         args.F2 = 16
         args.D = 2
     elif args.model in ["GRU", "LSTM"]:
+        args.num_layers   = trial.suggest_categorical("num_layers", [1, 2, 3, 4, 5])
         args.hid_channels = trial.suggest_categorical("hid_channels", [16, 32, 64, 128, 256])
-    elif args.model in ["ATCNet"]:
+    elif args.model == "ATCNet":
         args.num_windows = trial.suggest_categorical("num_windows", [2, 3, 4])
         args.conv_pool_size = trial.suggest_categorical("conv_pool_size", [5, 7, 9])
         args.F1 = 16
