@@ -47,6 +47,26 @@ class EEGTransformer(nn.Module):
         x = x.permute(0, 2, 1)  # Change back to (batch_size, channels, samples)
 
         return x
+    
+
+
+class LSTM(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers=1):
+        super(LSTM, self).__init__()
+        self.hidden_size = hidden_size
+        self.num_layers = num_layers
+        self.lstm = nn.LSTM(input_size, hidden_size, num_layers, batch_first=True)
+        self.linear = nn.Linear(hidden_size, input_size)
+
+    def forward(self, x):
+        # x: (trials, channels, time)
+        # LSTM: (batch, seq_len, features)
+        batch_size, seq_len, features = x.size()
+        lstm_out, _ = self.lstm(x)  # (batch_size, seq_len, hidden_size)
+        reshaped_out = lstm_out.contiguous().view(-1, self.hidden_size)  # (batch_size*seq_len, hidden_size)
+        projected_out = self.linear(reshaped_out)  # (batch_size*seq_len, features)
+        final_out = projected_out.view(batch_size, seq_len, features)
+        return final_out
 
 
 

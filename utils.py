@@ -149,7 +149,7 @@ def plot_history_sca(
                 label=f"best train classification loss={min(train_cls_loss):.5f} @ {np.argmin(train_cls_loss)+1}")
     axs[3].plot(list(range(1, len(val_cls_loss)+1)), val_cls_loss,
                 label=f"best valid classification loss={min(val_cls_loss):.5f} @ {np.argmin(val_cls_loss)+1}")
-    axs[3].set_title("Losses")
+    axs[3].set_title("Classification Losses")
     axs[3].set_yscale("log")
     axs[3].legend()
     axs[3].grid()
