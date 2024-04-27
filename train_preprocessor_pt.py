@@ -21,7 +21,7 @@ warnings.filterwarnings(action="ignore", category=FutureWarning)
 import utils
 from utils import Metric, plot_confusion_matrix, plot_history_sca
 from libs.dataset import BcicIv2aDataset, PhysionetMIDataset, Ofner2017Dataset
-from models_pytorch.preprocessor import LSTM, EEGTransformer
+from models_pytorch.preprocessor import PreLSTM, PreTransformer
 
 
 
@@ -67,6 +67,7 @@ def train_epoch(
         dataloader: torch.utils.data.DataLoader,
         sig_criterion: torch.nn.Module,
         cls_criterion: torch.nn.Module,
+        sig_loss_factor: int,
         optimizer: torch.optim.Optimizer,
         lr_scheduler: torch.optim.lr_scheduler.LRScheduler,
         device: Literal["cuda:0", "cpu"],
@@ -100,7 +101,7 @@ def train_epoch(
 
         batch_adjsig: torch.Tensor = preprocessor(batch_inputs)
         batch_pred: torch.Tensor = classifier(batch_adjsig.unsqueeze(1))
-        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * args.sig_loss_factor
+        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * sig_loss_factor
         cls_loss: torch.Tensor = cls_criterion(batch_pred, batch_truth)
         loss = sig_loss + cls_loss
         loss.backward()
@@ -143,6 +144,7 @@ def valid_epoch(
         dataloader: torch.utils.data.DataLoader,
         sig_criterion: torch.nn.Module,
         cls_criterion: torch.nn.Module,
+        sig_loss_factor: int,
         device: Literal["cuda:0", "cpu"],
         auto_hps: bool,
         cm_length: int = 0,
@@ -173,7 +175,7 @@ def valid_epoch(
 
         batch_adjsig: torch.Tensor = preprocessor(batch_inputs)
         batch_pred: torch.Tensor = classifier(batch_adjsig.unsqueeze(1))
-        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * args.sig_loss_factor
+        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * sig_loss_factor
         cls_loss: torch.Tensor = cls_criterion(batch_pred, batch_truth)
         loss = sig_loss + cls_loss
         sig_loss_metric.append(sig_loss.item())
@@ -233,15 +235,13 @@ def train(args) -> Tuple[float, float, float, float]:
         num_workers=args.num_workers)
 
     if args.preprocessor == "LSTM":
-        preprocessor = LSTM(
-            channels=train_inputs.shape[1],
-            samples=train_inputs.shape[2],
+        preprocessor = PreLSTM(
+            input_size=train_inputs.shape[1],
+            hidden_size=args.hidden_size,
             num_layers=args.num_layers,
-            num_heads=args.num_heads,
-            ffn_dim=args.ffn_dim,
             dropout=args.dropout).to(args.device)
     elif args.preprocessor == "Transformer":
-        preprocessor = EEGTransformer(
+        preprocessor = PreTransformer(
             channels=train_inputs.shape[1],
             samples=train_inputs.shape[2],
             num_layers=args.num_layers,
@@ -272,13 +272,13 @@ def train(args) -> Tuple[float, float, float, float]:
 
         train_results = train_epoch(preprocessor, classifier,
                                     my_train_dataLoader,
-                                    sig_criterion, cls_criterion,
+                                    sig_criterion, cls_criterion, args.sig_loss_factor,
                                     optimizer, lr_scheduler,
                                     args.device, args.auto_hps,
                                     dataset.class_number)
         valid_results = valid_epoch(preprocessor, classifier,
                                     my_valid_dataLoader,
-                                    sig_criterion, cls_criterion,
+                                    sig_criterion, cls_criterion, args.sig_loss_factor,
                                     args.device, args.auto_hps,
                                     dataset.class_number)
         

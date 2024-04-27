@@ -6,7 +6,7 @@ from train_preprocessor_pt import train
 
 
 
-DEFAULT_PREPROCESSOR = ["Transformer"][0]
+DEFAULT_PREPROCESSOR = ["LSTM", "Transformer"][0]
 DEFAULT_CLASSIFIER = ["EEGNet", "GRU", "LSTM", "ATCNet"][0]
 DEFAULT_DATASET = ["BcicIv2a", "PhysionetMI", "Ofner"][0]
 DEFAULT_FRAMEWORK = "pt"  # ["pt", "tf"][0]
@@ -31,7 +31,9 @@ def set_args_save_dir(args):
     args.save_dir += f"_bs={args.batch_size:03d}"
     args.save_dir += f"_lr={args.learning_rate:.4f}"
     args.save_dir += f"_ld={args.lr_decay:.6f}"
-    if args.preprocessor == "Transformer":
+    if args.preprocessor == "LSTM":
+        args.save_dir += f"_nl={args.num_layers}_hs={args.hidden_size}_do={args.dropout}"
+    elif args.preprocessor == "Transformer":
         args.save_dir += f"_nl={args.num_layers}_nh={args.num_heads}"
         args.save_dir += f"_fd={args.ffn_dim}_do={args.dropout}"
     return args
@@ -41,11 +43,18 @@ def objective(trial, args):
 
     if args.classifier == "EEGNet" and args.dataset == "BcicIv2a":
         args.classifier_weights = \
-            "histories_cls_tmp/04.26-18.31.57_60.70%_pt_EEGNet_BcicIv2a_bs=16_lr=0.0300_ld=0.999930"
+            "histories_cls_search/EEGNet_BcicIv2a_pt/67.39%_bs=032_lr=0.0061_ld=0.999895_k1=64_k2=32_do=0.32/best_valid_acc.pt"
+    elif args.classifier == "ATCNet" and args.dataset == "BcicIv2a":
+        args.classifier_weights = \
+            "histories_cls_search/ATCNet_BcicIv2a_pt/65.81%_bs=064_lr=0.0010_ld=0.999886_nw=4/best_valid_acc.pt"
     else:
         raise NotImplementedError
 
-    if args.preprocessor == "Transformer":
+    if args.preprocessor == "LSTM":
+        args.num_layers  = trial.suggest_categorical("num_layers", [1, 2, 3, 4, 5])
+        args.hidden_size = trial.suggest_categorical("hidden_size", [16, 32, 64, 128, 256])
+        args.dropout     = trial.suggest_float("dropout", 0.0, 0.9)
+    elif args.preprocessor == "Transformer":
         args.num_layers = trial.suggest_categorical("num_layers", [1, 2, 3, 4, 5])
         args.num_heads  = trial.suggest_categorical("num_heads", [3, 4, 6, 8])
         args.ffn_dim    = trial.suggest_categorical("ffn_dim", [128, 256, 512])
@@ -54,7 +63,7 @@ def objective(trial, args):
         raise NotImplementedError
 
     args.sig_loss_factor = trial.suggest_categorical("sig_loss_factor", [1, 2, 3, 5, 10, 20, 30, 50, 70, 100])
-    args.batch_size = trial.suggest_categorical("batch_size", [8, 16, 32, 64])  # , 128])
+    args.batch_size = trial.suggest_categorical("batch_size", [8, 16, 32, 64])
     args.learning_rate = trial.suggest_float("learning_rate", 0.0005, 0.05, log=True)
     args.lr_decay = trial.suggest_float("lr_decay", 0.99987, 0.99994)
     args = set_args_save_dir(args)
@@ -83,7 +92,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-p", "--preprocessor", type=str, default=DEFAULT_PREPROCESSOR,
-        help="The preprocessor to be trained. Options: ['Transformer'].")
+        help="The preprocessor to be trained. Options: ['LSTM', 'Transformer'].")
     parser.add_argument(
         "-c", "--classifier", type=str, default=DEFAULT_CLASSIFIER,
         help="The classifier to be used. " + \
