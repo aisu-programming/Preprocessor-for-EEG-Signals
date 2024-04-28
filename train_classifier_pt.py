@@ -69,7 +69,7 @@ def train_epoch(
         criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         lr_scheduler: torch.optim.lr_scheduler.LRScheduler,
-        device: Literal["cuda:0", "cpu"],
+        device: Literal["cuda:0", "cpu", "mps:0"],
         auto_hps: bool,
         cm_length: int = 0,
     ) -> Tuple[float, float, Union[np.ndarray, None]]:
@@ -129,7 +129,7 @@ def valid_epoch(
         model: torch.nn.Module,
         dataloader: torch.utils.data.DataLoader,
         criterion: torch.nn.Module,
-        device: Literal["cuda:0", "cpu"],
+        device: Literal["cuda:0", "cpu", "mps:0"],
         auto_hps: bool,
         cm_length: int = 0,
     ) -> Tuple[float, float, Union[np.ndarray, None]]:
