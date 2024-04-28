@@ -43,10 +43,10 @@ def objective(trial, args):
 
     if args.classifier == "EEGNet" and args.dataset == "BcicIv2a":
         args.classifier_weights = \
-            "histories_cls_search/EEGNet_BcicIv2a_pt/67.39%_bs=032_lr=0.0061_ld=0.999895_k1=64_k2=32_do=0.32/best_valid_acc.pt"
+            "histories_cls/EEGNet_BcicIv2a_pt/68.03%_bs=064_lr=0.0009_ld=0.999910_k1=32_k2=32_do=0.16/best_valid_acc.pt"
     elif args.classifier == "ATCNet" and args.dataset == "BcicIv2a":
         args.classifier_weights = \
-            "histories_cls_search/ATCNet_BcicIv2a_pt/65.81%_bs=064_lr=0.0010_ld=0.999886_nw=4/best_valid_acc.pt"
+            "histories_cls/ATCNet_BcicIv2a_pt/65.24%_bs=064_lr=0.0010_ld=0.999891_nw=3_cps=9/best_valid_acc.pt"
     else:
         raise NotImplementedError
 

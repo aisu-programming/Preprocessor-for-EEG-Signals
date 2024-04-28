@@ -207,11 +207,11 @@ def train(args) -> Tuple[float, float, float, float]:
     
     my_train_dataLoader = torch.utils.data.DataLoader(
         my_train_dataset, args.batch_size, shuffle=True,
-        pin_memory=True, drop_last=False,
+        pin_memory=True, drop_last=True,
         num_workers=args.num_workers)
     my_valid_dataLoader = torch.utils.data.DataLoader(
         my_valid_dataset, args.batch_size, shuffle=True,
-        pin_memory=True, drop_last=False,
+        pin_memory=True, drop_last=True,
         num_workers=args.num_workers)
 
     if args.model == "EEGNet":
