@@ -51,7 +51,7 @@ def objective(trial, args):
         raise NotImplementedError
 
     if args.preprocessor == "LSTM":
-        args.num_layers  = trial.suggest_categorical("num_layers", [1, 2, 3, 4, 5])
+        args.num_layers  = trial.suggest_categorical("num_layers", [1, 2, 3])
         args.hidden_size = trial.suggest_categorical("hidden_size", [16, 32, 64, 128, 256])
         args.dropout     = trial.suggest_float("dropout", 0.0, 0.9)
     elif args.preprocessor == "Transformer":
@@ -63,9 +63,9 @@ def objective(trial, args):
         raise NotImplementedError
 
     args.sig_loss_factor = trial.suggest_categorical("sig_loss_factor", [1, 2, 3, 5, 10, 20, 30, 50, 70, 100])
-    args.batch_size = trial.suggest_categorical("batch_size", [8, 16, 32, 64])
+    args.batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
     args.learning_rate = trial.suggest_float("learning_rate", 0.0005, 0.05, log=True)
-    args.lr_decay = trial.suggest_float("lr_decay", 0.99987, 0.99994)
+    args.lr_decay = trial.suggest_float("lr_decay", 0.99987, 0.99993)
     args = set_args_save_dir(args)
     return train(args)[2]   # valid acc
 

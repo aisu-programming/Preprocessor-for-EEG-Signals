@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 
 
@@ -39,8 +40,9 @@ class PreLSTM(nn.Module):
         super(PreLSTM, self).__init__()
         self.hidden_size = hidden_size
         self.num_layers = num_layers
+        self.dropout = dropout
         self.lstm = nn.LSTM(input_size, hidden_size,
-                            num_layers, dropout=dropout, 
+                            num_layers, 
                             batch_first=True)
         self.linear = nn.Linear(hidden_size, input_size)
 
@@ -49,6 +51,7 @@ class PreLSTM(nn.Module):
         batch_size, seq_len, features = x.size()
         x: torch.Tensor = self.lstm(x)[0]              # (batch_size, seq_len, hidden_size)
         x = x.contiguous().view(-1, self.hidden_size)  # (batch_size*seq_len,  hidden_size)
+        x = F.dropout(x, self.dropout)
         x: torch.Tensor = self.linear(x)               # (batch_size*seq_len,  features)
         x = x.view(batch_size, seq_len, features)
         x = x.permute(0, 2, 1)  # Change back to (batch_size, channels, samples)
