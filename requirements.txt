@@ -2,8 +2,8 @@ python-dotenv
 mne==1.6.1
 scikit-learn
 matplotlib
-tensorflow
-tf_keras
+tensorflow<=2.14
+# tf_keras
 
 # pip install torch --index-url https://download.pytorch.org/whl/cu118
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
