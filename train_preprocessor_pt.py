@@ -249,7 +249,7 @@ def train(args) -> Tuple[float, float, float, float]:
             ffn_dim=args.ffn_dim,
             dropout=args.dropout).to(args.device)
 
-    classifier: torch.nn.Module = torch.load(args.classifier_weights)
+    classifier: torch.nn.Module = torch.load(args.classifier_weights, map_location=args.device)
     classifier = classifier.to(args.device)
     classifier.eval()
     
