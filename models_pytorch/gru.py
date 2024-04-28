@@ -38,12 +38,14 @@ class GRU(nn.Module):
                  num_electrodes: int = 32,
                  hid_channels: int = 64,
                  num_classes: int = 2,
-                 num_layers: int = 2):
+                 num_layers: int = 2,
+                 dropout: float = 0.3):
         super(GRU, self).__init__()
 
         self.num_electrodes = num_electrodes
         self.hid_channels = hid_channels
         self.num_classes = num_classes
+        self.dropout = dropout
 
         self.gru_layer = nn.GRU(
             input_size=num_electrodes,
@@ -66,6 +68,6 @@ class GRU(nn.Module):
         x = x.permute(0, 2, 1)
 
         r_out, _ = self.gru_layer(x, None)
-        r_out = F.dropout(r_out, 0.3)
+        r_out = F.dropout(r_out, self.dropout)
         x = self.out(r_out[:, -1, :])  # choose r_out at the last time step
         return x

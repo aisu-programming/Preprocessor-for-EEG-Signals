@@ -24,6 +24,9 @@ class BaseDataset():
             self,
             ratio: float = 0.8
         ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+
+        random.seed(0)
+        
         train_data, train_label, valid_data, valid_label = [], [], [], []
         for sub_id in self.data:
             for sess_id in self.data[sub_id]:

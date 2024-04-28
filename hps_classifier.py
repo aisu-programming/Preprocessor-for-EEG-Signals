@@ -34,8 +34,9 @@ def set_args_save_dir(args):
         args.save_dir += f"_do={args.dropout:.02f}"
     elif args.model in ["GRU", "LSTM"]:
         args.save_dir += f"_nl={args.num_layers}_hc={args.hid_channels:03d}"
+        args.save_dir += f"_do={args.dropout:.02f}"
     elif args.model == "ATCNet":
-        args.save_dir += f"_nw={args.num_windows}"
+        args.save_dir += f"_nw={args.num_windows}_cps={args.conv_pool_size}"
     return args
 
 
@@ -45,24 +46,25 @@ def objective(trial, args):
     if args.model == "EEGNet":
         args.kernel_1 = trial.suggest_categorical("kernel_1", [32, 64])
         args.kernel_2 = trial.suggest_categorical("kernel_2", [16, 32])
-        args.dropout  = trial.suggest_float("dropout", 0.1, 0.5)
+        args.dropout  = trial.suggest_float("dropout", 0.0, 0.9)
         args.F1 = 8
         args.F2 = 16
         args.D = 2
-    elif args.model in ["GRU", "LSTM"]:
-        args.num_layers   = trial.suggest_categorical("num_layers", [1, 2, 3, 4])
-        args.hid_channels = trial.suggest_categorical("hid_channels", [16, 32, 64, 128])
+    elif args.model in [ "GRU", "LSTM" ]:
+        args.num_layers   = trial.suggest_categorical("num_layers", [1, 2, 3])
+        args.hid_channels = trial.suggest_categorical("hid_channels", [16, 32, 64])
+        args.dropout      = trial.suggest_float("dropout", 0.0, 0.9)
     elif args.model == "ATCNet":
-        args.num_windows = trial.suggest_categorical("num_windows", [2, 3, 4])
+        args.num_windows    = trial.suggest_categorical("num_windows", [2, 3, 4])
         args.conv_pool_size = trial.suggest_categorical("conv_pool_size", [5, 7, 9])
         args.F1 = 16
         args.D = 2
         args.tcn_kernel_size = 4
         args.tcn_depth = 2
 
-    args.batch_size = trial.suggest_categorical("batch_size", [8, 16, 32, 64])  # , 128])
+    args.batch_size = trial.suggest_categorical("batch_size", [16, 32, 64])
     args.learning_rate = trial.suggest_float("learning_rate", 0.0005, 0.05, log=True)
-    args.lr_decay = trial.suggest_float("lr_decay", 0.99985, 0.99995)
+    args.lr_decay = trial.suggest_float("lr_decay", 0.99987, 0.99993)
     args = set_args_save_dir(args)
     return train(args)[2]
 

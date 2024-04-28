@@ -229,12 +229,14 @@ def train(args) -> Tuple[float, float, float, float]:
         model = GRU(
             hid_channels=args.hid_channels,
             num_layers=args.num_layers,
+            dropout=args.dropout,
             num_electrodes=train_inputs.shape[1],
             num_classes=dataset.class_number).to(args.device)
     elif args.model == "LSTM":
         model = LSTM(
             hid_channels=args.hid_channels,
             num_layers=args.num_layers,
+            dropout=args.dropout,
             num_electrodes=train_inputs.shape[1],
             num_classes=dataset.class_number).to(args.device)
     elif args.model == "ATCNet":
@@ -393,6 +395,7 @@ if __name__ == "__main__":
     elif args.model in ["GRU", "LSTM"]:
         args.num_layers = 2
         args.hid_channels = 64
+        args.dropout = 0.5
     elif args.model == "ATCNet":
         args.num_windows = 3
         args.conv_pool_size = 7
@@ -411,7 +414,8 @@ if __name__ == "__main__":
         args.save_dir += f"_do={args.dropout:.02f}"
     elif args.model in ["GRU", "LSTM"]:
         args.save_dir += f"_nl={args.num_layers}_hc={args.hid_channels:03d}"
+        args.save_dir += f"_do={args.dropout:.02f}"
     elif args.model == "ATCNet":
-        args.save_dir += f"_nw={args.num_windows}"
+        args.save_dir += f"_nw={args.num_windows}_cps={args.conv_pool_size}"
 
     train(args)
