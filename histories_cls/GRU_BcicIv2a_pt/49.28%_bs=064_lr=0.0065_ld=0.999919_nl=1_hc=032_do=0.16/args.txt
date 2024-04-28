@@ -1,0 +1,17 @@
+model=GRU
+dataset=BcicIv2a
+framework=pt
+study_name=GRU_BcicIv2a_pt
+epochs=1000
+device=cuda:0
+num_workers=2
+save_plot=True
+show_plot=False
+auto_hps=True
+num_layers=1
+hid_channels=32
+dropout=0.15624146284428297
+batch_size=64
+learning_rate=0.00652265966651692
+lr_decay=0.9999193501539221
+save_dir=histories_cls_search/GRU_BcicIv2a_pt/bs=064_lr=0.0065_ld=0.999919_nl=1_hc=032_do=0.16

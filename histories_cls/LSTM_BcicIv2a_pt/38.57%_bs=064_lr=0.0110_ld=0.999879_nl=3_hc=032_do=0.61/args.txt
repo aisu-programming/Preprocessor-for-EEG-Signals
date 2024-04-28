@@ -1,0 +1,17 @@
+model=LSTM
+dataset=BcicIv2a
+framework=pt
+study_name=LSTM_BcicIv2a_pt
+epochs=1000
+device=cuda:0
+num_workers=2
+save_plot=True
+show_plot=False
+auto_hps=True
+num_layers=3
+hid_channels=32
+dropout=0.6054526253188344
+batch_size=64
+learning_rate=0.011020295354927736
+lr_decay=0.9998794922025617
+save_dir=histories_cls_search/LSTM_BcicIv2a_pt/bs=064_lr=0.0110_ld=0.999879_nl=3_hc=032_do=0.61
