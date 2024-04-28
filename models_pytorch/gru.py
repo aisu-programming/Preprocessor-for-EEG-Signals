@@ -65,7 +65,7 @@ class GRU(nn.Module):
         '''
         x = x.permute(0, 2, 1)
 
-        r_out, (_, _) = self.gru_layer(x, None)
+        r_out, _ = self.gru_layer(x, None)
         r_out = F.dropout(r_out, 0.3)
         x = self.out(r_out[:, -1, :])  # choose r_out at the last time step
         return x

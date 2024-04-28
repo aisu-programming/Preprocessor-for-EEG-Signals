@@ -3,7 +3,7 @@ import optuna
 import datetime
 
 
-MODEL = "LSTM"
+MODEL = "GRU"
 DATASET = "BcicIv2a"
 STUDY_NAME = f"{MODEL}_{DATASET}_pt"
 STORAGE = f"sqlite:///hps_c_{STUDY_NAME}_reconstruction.db"
@@ -43,10 +43,12 @@ for idx, dir in enumerate(os.listdir(root)):
                 pass
             args[key] = value
     if "num_layers" not in args: args["num_layers"] = 2
+    if args["num_layers"] > 4: continue
+    if args["hid_channels"] > 128: continue
 
     distributions = {
-        'num_layers': optuna.distributions.CategoricalDistribution(choices=(1, 2, 3, 4, 5)),
-        'hid_channels': optuna.distributions.CategoricalDistribution(choices=(16, 32, 64, 128, 256)),
+        'num_layers': optuna.distributions.CategoricalDistribution(choices=(1, 2, 3, 4)),
+        'hid_channels': optuna.distributions.CategoricalDistribution(choices=(16, 32, 64, 128)),
         'batch_size': optuna.distributions.CategoricalDistribution(choices=(8, 16, 32, 64)),
         'learning_rate': optuna.distributions.FloatDistribution(high=0.05, log=True, low=0.0005, step=None),
         'lr_decay': optuna.distributions.FloatDistribution(high=0.99995, log=False, low=0.99985, step=None)

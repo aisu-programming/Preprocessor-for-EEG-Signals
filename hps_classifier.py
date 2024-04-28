@@ -50,8 +50,8 @@ def objective(trial, args):
         args.F2 = 16
         args.D = 2
     elif args.model in ["GRU", "LSTM"]:
-        args.num_layers   = trial.suggest_categorical("num_layers", [1, 2, 3, 4, 5])
-        args.hid_channels = trial.suggest_categorical("hid_channels", [16, 32, 64, 128, 256])
+        args.num_layers   = trial.suggest_categorical("num_layers", [1, 2, 3, 4])
+        args.hid_channels = trial.suggest_categorical("hid_channels", [16, 32, 64, 128])
     elif args.model == "ATCNet":
         args.num_windows = trial.suggest_categorical("num_windows", [2, 3, 4])
         args.conv_pool_size = trial.suggest_categorical("conv_pool_size", [5, 7, 9])

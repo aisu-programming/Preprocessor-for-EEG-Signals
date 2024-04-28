@@ -37,5 +37,9 @@ class BaseDataset():
                 train_label.append(self.labels[sub_id][sess_id][random_idx[:length]])
                 valid_data.append(self.data[sub_id][sess_id][random_idx[length:]])
                 valid_label.append(self.labels[sub_id][sess_id][random_idx[length:]])
+                # train_data.append(self.data[sub_id][sess_id][:length])
+                # train_label.append(self.labels[sub_id][sess_id][:length])
+                # valid_data.append(self.data[sub_id][sess_id][length:])
+                # valid_label.append(self.labels[sub_id][sess_id][length:])
         return np.vstack(train_data), np.vstack(train_label), \
                np.vstack(valid_data), np.vstack(valid_label)
