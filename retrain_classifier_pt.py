@@ -78,7 +78,7 @@ def backup_files(args: argparse.Namespace) -> None:
             record_txt.write(f"{key}={value}\n")
 
 
-def get_lr(optimizer: torch.optim.Optimizer) -> float | None:
+def get_lr(optimizer: torch.optim.Optimizer) -> Union[float, None]:
     for param_group in optimizer.param_groups:
         return param_group["lr"]
 
@@ -87,10 +87,7 @@ def train_epoch(
         preprocessor: torch.nn.Module,   #
         classifier: torch.nn.Module,
         dataloader: torch.utils.data.DataLoader,
-        # criterion: torch.nn.Module,
-        sig_criterion: torch.nn.Module,  #
-        cls_criterion: torch.nn.Module,  #
-        sig_loss_factor: int,            #
+        criterion: torch.nn.Module,
         optimizer: torch.optim.Optimizer,
         lr_scheduler: torch.optim.lr_scheduler.LRScheduler,
         device: Literal["cuda:0", "cpu", "mps:0"],
@@ -99,9 +96,6 @@ def train_epoch(
     ) -> Tuple[float, float, float, float, Union[np.ndarray, None]]:
     
     classifier.train()
-
-    sig_loss_metric = Metric(50)  #
-    cls_loss_metric = Metric(50)  #
 
     loss_metric = Metric(50)
     acc_metric  = Metric(50)
@@ -123,20 +117,14 @@ def train_epoch(
         batch_inputs: torch.Tensor = batch_inputs.to(device)
         batch_truth : torch.Tensor = batch_truth.to(device)
 
-        batch_adjsig: torch.Tensor = preprocessor(batch_inputs)  #
+        with torch.no_grad():
+            batch_adjsig: torch.Tensor = preprocessor(batch_inputs)  #
         batch_pred: torch.Tensor = classifier(batch_adjsig.unsqueeze(1))  #
-        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * sig_loss_factor  #
-        cls_loss: torch.Tensor = cls_criterion(batch_pred, batch_truth)  #
-        loss = sig_loss + cls_loss  # is this still correct for training preprocessor?
+        loss: torch.Tensor = criterion(batch_pred, batch_truth)  #
 
-        # batch_pred: torch.Tensor = classifier(batch_inputs)
-        # loss: torch.Tensor = criterion(batch_pred, batch_truth)
         loss.backward()
         optimizer.step()
         lr_scheduler.step()
-        sig_loss_metric.append(sig_loss.item())  #
-        cls_loss_metric.append(cls_loss.item())  #
-
         loss_metric.append(loss.item())
 
         batch_truth = np.argmax(batch_truth.cpu().detach().numpy(), axis=1)
@@ -150,30 +138,22 @@ def train_epoch(
                                  labels=list(range(cm_length)))
         if not auto_hps:
             pbar.set_description(f"[TRAIN] loss: {loss_metric.avg:.5f}, " + 
-                                 f"sig_loss: {sig_loss_metric.avg:.5f}, " +  #
-                                 f"cls_loss: {cls_loss_metric.avg:.5f}, " +  #
                                  f"Acc: {acc_metric.avg*100:.3f}%, " + 
                                  f"LR: {get_lr(optimizer):.10f}")
     if auto_hps:
         print(f"loss: {loss_metric.avg:.5f}, " + 
-              f"sig_loss: {sig_loss_metric.avg:.5f}, " +  #
-              f"cls_loss: {cls_loss_metric.avg:.5f}, " +  #
               f"Acc: {acc_metric.avg*100:.3f}%, " + 
               f"LR: {get_lr(optimizer):.10f}, " + 
               f"time: {time.time()-start_time:.2f}s", flush=True)
     
-    return (sig_loss_metric.avg, cls_loss_metric.avg, loss_metric.avg,
-           acc_metric.avg, confusion_matrixs)
+    return (loss_metric.avg, acc_metric.avg, confusion_matrixs)
 
 
 def valid_epoch(
         preprocessor: torch.nn.Module,  #
         classifier: torch.nn.Module,
         dataloader: torch.utils.data.DataLoader,
-        # criterion: torch.nn.Module,
-        sig_criterion: torch.nn.Module,
-        cls_criterion: torch.nn.Module,
-        sig_loss_factor: int,
+        criterion: torch.nn.Module,
         device: Literal["cuda:0", "cpu", "mps:0"],
         auto_hps: bool,
         cm_length: int = 0,
@@ -181,8 +161,6 @@ def valid_epoch(
     
     classifier.eval()
 
-    sig_loss_metric = Metric(10000) #
-    cls_loss_metric = Metric(10000) #
     loss_metric = Metric(10000)
     acc_metric  = Metric(10000)
     if cm_length != 0:
@@ -202,18 +180,11 @@ def valid_epoch(
         batch_inputs: torch.Tensor = batch_inputs.to(device)
         batch_truth : torch.Tensor = batch_truth.to(device)
 
-        batch_adjsig: torch.Tensor = preprocessor(batch_inputs)  #
+        with torch.no_grad():
+            batch_adjsig: torch.Tensor = preprocessor(batch_inputs)  #
         batch_pred: torch.Tensor = classifier(batch_adjsig.unsqueeze(1))  #
-        sig_loss: torch.Tensor = sig_criterion(batch_adjsig, batch_inputs) * sig_loss_factor  #
-        cls_loss: torch.Tensor = cls_criterion(batch_pred, batch_truth)  #
-        loss = sig_loss + cls_loss  #
-        sig_loss_metric.append(sig_loss.item())  #
-        cls_loss_metric.append(cls_loss.item())  #
+        loss: torch.Tensor = criterion(batch_pred, batch_truth)  #
         loss_metric.append(loss.item())  #
-
-        # batch_pred: torch.Tensor = classifier(batch_inputs)
-        # loss: torch.Tensor = criterion(batch_pred, batch_truth)
-        # loss_metric.append(loss.item())
 
         batch_truth = np.argmax(batch_truth.cpu().detach().numpy(), axis=1)
         batch_pred  = np.argmax(batch_pred.cpu().detach().numpy() , axis=1)
@@ -226,19 +197,14 @@ def valid_epoch(
                                  labels=list(range(cm_length)))
         if not auto_hps:
             pbar.set_description(f"[VALID] loss: {loss_metric.avg:.5f}, " + 
-                                 f"sig_loss: {sig_loss_metric.avg:.5f}, " +  #
-                                 f"cls_loss: {cls_loss_metric.avg:.5f}, " +  #
                                  f"Acc: {acc_metric.avg*100:.3f}%")
     
     if auto_hps:
         print(f"loss: {loss_metric.avg:.5f}, " + 
-              f"sig_loss: {sig_loss_metric.avg:.5f}, " +  #
-              f"cls_loss: {cls_loss_metric.avg:.5f}, " +  #
               f"Acc: {acc_metric.avg*100:.3f}%, " + 
               f"time: {time.time()-start_time:.2f}s", flush=True)
     
-    return (sig_loss_metric.avg, cls_loss_metric.avg, loss_metric.avg,
-           acc_metric.avg, confusion_matrixs)
+    return (loss_metric.avg, acc_metric.avg, confusion_matrixs)
 
 
 def train(args) -> Tuple[float, float, float, float]:
@@ -248,7 +214,7 @@ def train(args) -> Tuple[float, float, float, float]:
     backup_files(args)
 
     if args.dataset == "BcicIv2a":
-        dataset = BcicIv2aDataset(auto_hps=args.auto_hps)
+        dataset = BcicIv2aDataset(subject_id_list=[1], auto_hps=args.auto_hps)
     elif args.dataset == "PhysionetMI":
         dataset = PhysionetMIDataset(auto_hps=args.auto_hps)
     elif args.dataset == "Ofner":
@@ -256,10 +222,6 @@ def train(args) -> Tuple[float, float, float, float]:
 
     train_inputs, train_truths, valid_inputs, valid_truths = \
         dataset.splitted_data_and_label()
-
-    # if args.classifier in ["EEGNet", "ATCNet"]:
-    #     train_inputs = np.expand_dims(train_inputs, axis=1)
-    #     valid_inputs = np.expand_dims(valid_inputs, axis=1)
 
     print("input shapes")
     print(train_inputs.shape, train_truths.shape)
@@ -270,43 +232,40 @@ def train(args) -> Tuple[float, float, float, float]:
 
     my_train_dataLoader = torch.utils.data.DataLoader(
         my_train_dataset, args.batch_size, shuffle=True,
-        pin_memory=True, drop_last=False,
-        num_workers=args.num_workers)
+        pin_memory=True, drop_last=True, num_workers=args.num_workers)
     my_valid_dataLoader = torch.utils.data.DataLoader(
         my_valid_dataset, args.batch_size, shuffle=True,
-        pin_memory=True, drop_last=False,
-        num_workers=args.num_workers)
+        pin_memory=True, drop_last=True, num_workers=args.num_workers)
 
     preprocessor : torch.nn.Module = torch.load(args.preprocessor_weights, map_location=args.device)
     preprocessor = preprocessor.to(args.device)
     preprocessor.eval()
 
-
     if args.classifier == "EEGNet":
-        model = EEGNet(
+        classifier = EEGNet(
             kernel_1=args.kernel_1,
             kernel_2=args.kernel_2,
             dropout=args.dropout,
             F1=args.F1,
             F2=args.F2,
             D=args.D,
-            # chunk_size=train_inputs.shape[3],
-            num_electrodes=train_inputs.shape[2],
+            num_electrodes=train_inputs.shape[1],
+            chunk_size=train_inputs.shape[2],
             num_classes=dataset.class_number).to(args.device)
     elif args.classifier == "GRU":
-        model = GRU(
+        classifier = GRU(
             hid_channels=args.hid_channels,
             num_layers=args.num_layers,
             num_electrodes=train_inputs.shape[1],
             num_classes=dataset.class_number).to(args.device)
     elif args.classifier == "LSTM":
-        model = LSTM(
+        classifier = LSTM(
             hid_channels=args.hid_channels,
             num_layers=args.num_layers,
             num_electrodes=train_inputs.shape[1],
             num_classes=dataset.class_number).to(args.device)
     elif args.classifier == "ATCNet":
-        model = ATCNet(
+        classifier = ATCNet(
             num_windows=args.num_windows,
             conv_pool_size=args.conv_pool_size,
             F1=args.F1,
@@ -314,63 +273,37 @@ def train(args) -> Tuple[float, float, float, float]:
             tcn_kernel_size=args.tcn_kernel_size,
             tcn_depth=args.tcn_depth,
             num_classes=dataset.class_number,
-            num_electrodes=train_inputs.shape[2],
-            # chunk_size=train_inputs.shape[3]
+            num_electrodes=train_inputs.shape[1],
+            chunk_size=train_inputs.shape[2],
             ).to(args.device)
     
-    # criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
-    # optimizer: torch.optim.Optimizer = \
-    #     torch.optim.Adam(model.parameters(), lr=args.learning_rate)
-    # lr_scheduler: torch.optim.lr_scheduler.LRScheduler = \
-    #     torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
-
-    sig_criterion: torch.nn.Module = torch.nn.MSELoss()
-    cls_criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
+    criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
     optimizer: torch.optim.Optimizer = \
-        torch.optim.Adam(preprocessor.parameters(), lr=args.learning_rate)
+        torch.optim.Adam(classifier.parameters(), lr=args.learning_rate)
     lr_scheduler: torch.optim.lr_scheduler.LRScheduler = \
         torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
 
-
     best_valid_loss, best_valid_acc = np.inf, 0.0
-    # train_losses, train_accs, valid_losses, valid_accs, lrs = [], [], [], [], []
-    train_sig_losses, train_cls_losses, train_losses, train_accs = [], [], [], []
-    valid_sig_losses, valid_cls_losses, valid_losses, valid_accs, lrs = [], [], [], [], []
+    train_losses, train_accs, valid_losses, valid_accs, lrs = [], [], [], [], []
 
     early_stop_counter = 0
     for epoch in range(1, args.epochs+1):
         print(f"{epoch}/{args.epochs}")
 
-        train_results = train_epoch(preprocessor, model, my_train_dataLoader,
-                                    sig_criterion, cls_criterion, args.sig_loss_factor, 
-                                    optimizer, lr_scheduler,
-                                    args.device, args.auto_hps,
-                                    dataset.class_number)
-        valid_results = valid_epoch(preprocessor, model, my_valid_dataLoader,
-                                    sig_criterion, cls_criterion, args.sig_loss_factor,
-                                    args.device, args.auto_hps,
-                                    dataset.class_number)
+        train_results = train_epoch(preprocessor, classifier, my_train_dataLoader,
+                                    criterion, optimizer, lr_scheduler,
+                                    args.device, args.auto_hps, dataset.class_number)
+        valid_results = valid_epoch(preprocessor, classifier, my_valid_dataLoader,
+                                    criterion, args.device, args.auto_hps, dataset.class_number)
         
-        # train_loss, train_acc, train_cm = train_results
-        # valid_loss, valid_acc, valid_cm = valid_results
-        train_sig_loss, train_cls_loss, train_loss, train_acc, train_cm = train_results
-        valid_sig_loss, valid_cls_loss, valid_loss, valid_acc, valid_cm = valid_results
+        train_loss, train_acc, train_cm = train_results
+        valid_loss, valid_acc, valid_cm = valid_results
 
-        # train_losses.append(train_loss)
-        # train_accs.append(train_acc)
-        # valid_losses.append(valid_loss)
-        # valid_accs.append(valid_acc)
-        # lrs.append(get_lr(optimizer))
-        train_sig_losses.append(train_sig_loss)
-        train_cls_losses.append(train_cls_loss)
         train_losses.append(train_loss)
         train_accs.append(train_acc)
-        valid_sig_losses.append(valid_sig_loss)
-        valid_cls_losses.append(valid_cls_loss)
         valid_losses.append(valid_loss)
         valid_accs.append(valid_acc)
         lrs.append(get_lr(optimizer))
-
 
         early_stop_counter += 1
         if valid_loss < best_valid_loss:
@@ -383,7 +316,7 @@ def train(args) -> Tuple[float, float, float, float]:
                 plot_confusion_matrix(dataset.class_number, valid_cm,
                                       f"{args.save_dir}/best_valid_loss_valid_cm.png",
                                       "Valid Confusion Matrix at Best Valid Loss")
-            torch.save(model, f"{args.save_dir}/best_valid_loss.pt")
+            torch.save(classifier, f"{args.save_dir}/best_valid_loss.pt")
         if valid_acc > best_valid_acc:
             early_stop_counter = 0
             best_valid_acc = valid_acc
@@ -394,40 +327,22 @@ def train(args) -> Tuple[float, float, float, float]:
                 plot_confusion_matrix(dataset.class_number, valid_cm,
                                       f"{args.save_dir}/best_valid_acc_valid_cm.png",
                                       "Valid Confusion Matrix at Best Valid Acc")
-            torch.save(model, f"{args.save_dir}/best_valid_acc.pt")
+            torch.save(classifier, f"{args.save_dir}/best_valid_acc.pt")
         
         if (epoch == args.epochs or (epoch > 500 and early_stop_counter >= 100)) and \
            (args.save_plot or args.show_plot):
-        #     history = {"accuracy": train_accs,
-        #                "val_accuracy": valid_accs,
-        #                "loss": train_losses,
-        #                "val_loss": valid_losses,
-        #                "lr": lrs}
             history = {"accuracy": train_accs,
-                       "sig_loss": train_sig_losses,
-                       "cls_loss": train_cls_losses,
-                       "loss": train_losses,
                        "val_accuracy": valid_accs,
-                       "val_sig_loss": valid_sig_losses,
-                       "val_cls_loss": valid_cls_losses,
+                       "loss": train_losses,
                        "val_loss": valid_losses,
                        "lr": lrs}
             plot_history(history, args.classifier,
                          f"{args.save_dir}/history_plot.png",
                          args.save_plot, args.show_plot)
         elif epoch % 50 == 0 and args.save_plot:
-            # history = {"accuracy": train_accs,
-            #            "val_accuracy": valid_accs,
-            #            "loss": train_losses,
-            #            "val_loss": valid_losses,
-            #            "lr": lrs}
             history = {"accuracy": train_accs,
-                       "sig_loss": train_sig_losses,
-                       "cls_loss": train_cls_losses,
-                       "loss": train_losses,
                        "val_accuracy": valid_accs,
-                       "val_sig_loss": valid_sig_losses,
-                       "val_cls_loss": valid_cls_losses,
+                       "loss": train_losses,
                        "val_loss": valid_losses,
                        "lr": lrs}
             plot_history(history, args.classifier,

@@ -12,5 +12,6 @@ histories_cls_search
 histories_pre_archived
 histories_pre_tmp
 histories_pre_search
+histories_pre_cls_tmp
 *.out
 *.err
