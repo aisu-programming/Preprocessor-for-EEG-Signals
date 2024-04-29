@@ -302,10 +302,10 @@ def train(args) -> Tuple[float, float, float, float]:
             if dataset.class_number != 0:
                 plot_confusion_matrix(dataset.class_number, train_cm, 
                                       f"{args.save_dir}/best_valid_loss_train_cm.png",
-                                      "Train Confusion Matirx at Best Valid Loss")
+                                      "Train Confusion Matrix at Best Valid Loss")
                 plot_confusion_matrix(dataset.class_number, valid_cm,
                                       f"{args.save_dir}/best_valid_loss_valid_cm.png",
-                                      "Valid Confusion Matirx at Best Valid Loss")
+                                      "Valid Confusion Matrix at Best Valid Loss")
             torch.save(preprocessor, f"{args.save_dir}/best_valid_loss.pt")
         if valid_acc > best_valid_acc:
             early_stop_counter = 0
@@ -313,10 +313,10 @@ def train(args) -> Tuple[float, float, float, float]:
             if dataset.class_number != 0:
                 plot_confusion_matrix(dataset.class_number, train_cm,
                                       f"{args.save_dir}/best_valid_acc_train_cm.png",
-                                      "Train Confusion Matirx at Best Valid Acc")
+                                      "Train Confusion Matrix at Best Valid Acc")
                 plot_confusion_matrix(dataset.class_number, valid_cm,
                                       f"{args.save_dir}/best_valid_acc_valid_cm.png",
-                                      "Valid Confusion Matirx at Best Valid Acc")
+                                      "Valid Confusion Matrix at Best Valid Acc")
             torch.save(preprocessor, f"{args.save_dir}/best_valid_acc.pt")
         
         if (epoch == args.epochs or (epoch > 150 and early_stop_counter >= 50)) and \
