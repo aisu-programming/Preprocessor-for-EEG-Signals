@@ -2,12 +2,12 @@ import torch
 import warnings
 import numpy as np
 import matplotlib.pyplot as plt
-from libs.dataset import BcicIv2aDataset, PhysionetMIDataset
+from libs.dataset import BcicIv2aDataset
 warnings.filterwarnings(action="ignore", category=FutureWarning)
 
 
 
-dir = "histories_pre_tmp/04.26-18.50.11_58.66%_pt_Transformer_EEGNet_BcicIv2a_slf=100_bs=32_lr=0.0250_ld=0.999910"
+dir = "histories_pre/Transformer_EEGNet_BcicIv2a_pt/66.05%_slf=010_bs=064_lr=0.0016_ld=0.999911_nl=1_nh=06_fd=128_do=0.89"
 preprocessor = torch.load(f"{dir}/best_valid_acc.pt")
 
 raw_signal = BcicIv2aDataset(subject_id_list=[1]).data[1][0][:32]
@@ -27,4 +27,4 @@ for i in range(num_plot_channel):
     axes[i].legend()
     axes[i].grid()
 plt.tight_layout()
-plt.savefig("test.png")
+plt.savefig(f"{dir}/preprocessed_signal.png")

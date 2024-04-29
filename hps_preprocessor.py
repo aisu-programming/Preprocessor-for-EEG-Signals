@@ -76,7 +76,7 @@ def main(args):
                                 study_name=args.study_name,
                                 storage=f"sqlite:///hps_p_{args.study_name}.db",
                                 load_if_exists=True)
-    study.optimize(lambda trial: objective(trial, args), n_trials=100)
+    study.optimize(lambda trial: objective(trial, args), n_trials=1000)
 
     print("Number of finished trials: ", len(study.trials))
     for i, best_trial in enumerate(study.best_trials):
