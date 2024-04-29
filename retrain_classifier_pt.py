@@ -241,7 +241,7 @@ def valid_epoch(
            acc_metric.avg, confusion_matrixs)
 
 
-def train(args) -> Tuple[float, float, float, float]: # TODO
+def train(args) -> Tuple[float, float, float, float]:
     assert args.dataset in ["BcicIv2a", "PhysionetMI", "Ofner"], \
         "Invalid value for parameter 'dataset'."
     
@@ -254,9 +254,14 @@ def train(args) -> Tuple[float, float, float, float]: # TODO
     elif args.dataset == "Ofner":
         dataset = Ofner2017Dataset(auto_hps=args.auto_hps)
 
+    preprocessor : torch.nn.Module = torch.load(args.preprocessor_weights, map_location=args.device)
+    preprocessor = preprocessor.to(args.device)
+    preprocessor.eval()
+
     train_inputs, train_truths, valid_inputs, valid_truths = \
         dataset.splitted_data_and_label()
-    if args.model in ["EEGNet", "ATCNet"]:
+
+    if args.classifier in ["EEGNet", "ATCNet"]:
         train_inputs = np.expand_dims(train_inputs, axis=1)
         valid_inputs = np.expand_dims(valid_inputs, axis=1)
 
@@ -275,7 +280,7 @@ def train(args) -> Tuple[float, float, float, float]: # TODO
         pin_memory=True, drop_last=False,
         num_workers=args.num_workers)
 
-    if args.model == "EEGNet":
+    if args.classifier == "EEGNet":
         model = EEGNet(
             kernel_1=args.kernel_1,
             kernel_2=args.kernel_2,
@@ -286,19 +291,19 @@ def train(args) -> Tuple[float, float, float, float]: # TODO
             chunk_size=train_inputs.shape[3],
             num_electrodes=train_inputs.shape[2],
             num_classes=dataset.class_number).to(args.device)
-    elif args.model == "GRU":
+    elif args.classifier == "GRU":
         model = GRU(
             hid_channels=args.hid_channels,
             num_layers=args.num_layers,
             num_electrodes=train_inputs.shape[1],
             num_classes=dataset.class_number).to(args.device)
-    elif args.model == "LSTM":
+    elif args.classifier == "LSTM":
         model = LSTM(
             hid_channels=args.hid_channels,
             num_layers=args.num_layers,
             num_electrodes=train_inputs.shape[1],
             num_classes=dataset.class_number).to(args.device)
-    elif args.model == "ATCNet":
+    elif args.classifier == "ATCNet":
         model = ATCNet(
             num_windows=args.num_windows,
             conv_pool_size=args.conv_pool_size,
@@ -310,35 +315,60 @@ def train(args) -> Tuple[float, float, float, float]: # TODO
             num_electrodes=train_inputs.shape[2],
             chunk_size=train_inputs.shape[3]).to(args.device)
     
-    criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
+    # criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
+    # optimizer: torch.optim.Optimizer = \
+    #     torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+    # lr_scheduler: torch.optim.lr_scheduler.LRScheduler = \
+    #     torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
+
+    sig_criterion: torch.nn.Module = torch.nn.MSELoss()
+    cls_criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
     optimizer: torch.optim.Optimizer = \
-        torch.optim.Adam(model.parameters(), lr=args.learning_rate)
+        torch.optim.Adam(preprocessor.parameters(), lr=args.learning_rate)
     lr_scheduler: torch.optim.lr_scheduler.LRScheduler = \
         torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=args.lr_decay)
 
+
     best_valid_loss, best_valid_acc = np.inf, 0.0
-    train_losses, train_accs, valid_losses, valid_accs, lrs = [], [], [], [], []
+    # train_losses, train_accs, valid_losses, valid_accs, lrs = [], [], [], [], []
+    train_sig_losses, train_cls_losses, train_losses, train_accs = [], [], [], []
+    valid_sig_losses, valid_cls_losses, valid_losses, valid_accs, lrs = [], [], [], [], []
+
     early_stop_counter = 0
     for epoch in range(1, args.epochs+1):
         print(f"{epoch}/{args.epochs}")
 
-        train_results = train_epoch(model, my_train_dataLoader,
-                                    criterion, optimizer, lr_scheduler,
+        train_results = train_epoch(preprocessor, model, my_train_dataLoader,
+                                    sig_criterion, cls_criterion, args.sig_loss_factor, 
+                                    optimizer, lr_scheduler,
                                     args.device, args.auto_hps,
                                     dataset.class_number)
-        valid_results = valid_epoch(model, my_valid_dataLoader,
-                                    criterion, args.device, args.auto_hps,
+        valid_results = valid_epoch(preprocessor, model, my_valid_dataLoader,
+                                    sig_criterion, cls_criterion, args.sig_loss_factor,
+                                    args.device, args.auto_hps,
                                     dataset.class_number)
         
-        train_loss, train_acc, train_cm = train_results
-        valid_loss, valid_acc, valid_cm = valid_results
+        # train_loss, train_acc, train_cm = train_results
+        # valid_loss, valid_acc, valid_cm = valid_results
+        train_sig_loss, train_cls_loss, train_loss, train_acc, train_cm = train_results
+        valid_sig_loss, valid_cls_loss, valid_loss, valid_acc, valid_cm = valid_results
 
+        # train_losses.append(train_loss)
+        # train_accs.append(train_acc)
+        # valid_losses.append(valid_loss)
+        # valid_accs.append(valid_acc)
+        # lrs.append(get_lr(optimizer))
+        train_sig_losses.append(train_sig_loss)
+        train_cls_losses.append(train_cls_loss)
         train_losses.append(train_loss)
         train_accs.append(train_acc)
+        valid_sig_losses.append(valid_sig_loss)
+        valid_cls_losses.append(valid_cls_loss)
         valid_losses.append(valid_loss)
         valid_accs.append(valid_acc)
         lrs.append(get_lr(optimizer))
-        
+
+
         early_stop_counter += 1
         if valid_loss < best_valid_loss:
             early_stop_counter = 0
@@ -346,10 +376,10 @@ def train(args) -> Tuple[float, float, float, float]: # TODO
             if dataset.class_number != 0:
                 plot_confusion_matrix(dataset.class_number, train_cm, 
                                       f"{args.save_dir}/best_valid_loss_train_cm.png",
-                                      "Train Confusion Matirx at Best Valid Loss")
+                                      "Train Confusion Matrix at Best Valid Loss")
                 plot_confusion_matrix(dataset.class_number, valid_cm,
                                       f"{args.save_dir}/best_valid_loss_valid_cm.png",
-                                      "Valid Confusion Matirx at Best Valid Loss")
+                                      "Valid Confusion Matrix at Best Valid Loss")
             torch.save(model, f"{args.save_dir}/best_valid_loss.pt")
         if valid_acc > best_valid_acc:
             early_stop_counter = 0
@@ -357,38 +387,56 @@ def train(args) -> Tuple[float, float, float, float]: # TODO
             if dataset.class_number != 0:
                 plot_confusion_matrix(dataset.class_number, train_cm,
                                       f"{args.save_dir}/best_valid_acc_train_cm.png",
-                                      "Train Confusion Matirx at Best Valid Acc")
+                                      "Train Confusion Matrix at Best Valid Acc")
                 plot_confusion_matrix(dataset.class_number, valid_cm,
                                       f"{args.save_dir}/best_valid_acc_valid_cm.png",
-                                      "Valid Confusion Matirx at Best Valid Acc")
+                                      "Valid Confusion Matrix at Best Valid Acc")
             torch.save(model, f"{args.save_dir}/best_valid_acc.pt")
         
         if (epoch == args.epochs or (epoch > 500 and early_stop_counter >= 100)) and \
            (args.save_plot or args.show_plot):
+        #     history = {"accuracy": train_accs,
+        #                "val_accuracy": valid_accs,
+        #                "loss": train_losses,
+        #                "val_loss": valid_losses,
+        #                "lr": lrs}
             history = {"accuracy": train_accs,
-                       "val_accuracy": valid_accs,
+                       "sig_loss": train_sig_losses,
+                       "cls_loss": train_cls_losses,
                        "loss": train_losses,
+                       "val_accuracy": valid_accs,
+                       "val_sig_loss": valid_sig_losses,
+                       "val_cls_loss": valid_cls_losses,
                        "val_loss": valid_losses,
                        "lr": lrs}
-            plot_history(history, args.model,
+            plot_history(history, args.classifier,
                          f"{args.save_dir}/history_plot.png",
                          args.save_plot, args.show_plot)
         elif epoch % 50 == 0 and args.save_plot:
+            # history = {"accuracy": train_accs,
+            #            "val_accuracy": valid_accs,
+            #            "loss": train_losses,
+            #            "val_loss": valid_losses,
+            #            "lr": lrs}
             history = {"accuracy": train_accs,
-                       "val_accuracy": valid_accs,
+                       "sig_loss": train_sig_losses,
+                       "cls_loss": train_cls_losses,
                        "loss": train_losses,
+                       "val_accuracy": valid_accs,
+                       "val_sig_loss": valid_sig_losses,
+                       "val_cls_loss": valid_cls_losses,
                        "val_loss": valid_losses,
                        "lr": lrs}
-            plot_history(history, args.model,
+            plot_history(history, args.classifier,
                          f"{args.save_dir}/history_plot.png", True, False)
         if epoch > 500 and early_stop_counter >= 100:
             print(f"Early stopping at epoch: {epoch}.", flush=True)
             break
 
     if not args.auto_hps:
-        new_save_dir = args.save_dir.replace("histories_cls_tmp/", '')
+        new_save_dir = args.save_dir.replace("histories_pre_cls_tmp/", '')
         new_save_dir = new_save_dir.split('_', 1)
-        new_save_dir = f"histories_cls_tmp/{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
+        new_save_dir = f"histories_pre_cls_tmp/{new_save_dir[0]}_{best_valid_acc*100:.2f}%_{new_save_dir[1]}"
         os.rename(args.save_dir, new_save_dir)
     else:
         new_save_dir = args.save_dir.split('_pt/', 1)
@@ -405,8 +453,18 @@ if __name__ == "__main__": # TODO
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-m", "--model", type=str, default="GRU",
-        help="The model to be trained. " + \
+        "-p", "--preprocessor", type=str, default="Transformer",
+        help="The preprocessor to be used. Options: ['LSTM', 'Transformer'].")
+    parser.add_argument(
+        "-pw", "--preprocessor_weights", type=str,
+        default="histories_pre/LSTM_ATCNet_BcicIv2a_pt/84.91%_slf=100_bs=064_lr=0.0013_ld=0.999872_nl=3_hs=032_do=0.23/best_valid_acc.pt",
+        help="The path of the weights of the preprocessor to be used.")
+    parser.add_argument(
+        "-s", "--sig_loss_factor", type=int, default=10,
+        help="The x value of `loss = x * sig_loss + cls_loss`.")
+    parser.add_argument(
+        "-c", "--classifier", type=str, default="EEGNet",
+        help="The classifier to be trained. " + \
              "Options: ['EEGNet', 'GRU', 'LSTM', 'ATCNet'].")
     parser.add_argument(
         "-d", "--dataset", type=str, default="BcicIv2a",
@@ -444,17 +502,17 @@ if __name__ == "__main__": # TODO
 
     args = parser.parse_args()
 
-    if args.model == "EEGNet":
+    if args.classifier == "EEGNet":
         args.kernel_1 = 32
         args.kernel_2 = 16
         args.dropout = 0.5
         args.F1 = 8
         args.F2 = 16
         args.D = 2
-    elif args.model in ["GRU", "LSTM"]:
+    elif args.classifier in ["GRU", "LSTM"]:
         args.num_layers = 2
         args.hid_channels = 64
-    elif args.model == "ATCNet":
+    elif args.classifier == "ATCNet":
         args.num_windows = 3
         args.conv_pool_size = 7
         args.F1 = 16
@@ -462,17 +520,18 @@ if __name__ == "__main__": # TODO
         args.tcn_kernel_size = 4
         args.tcn_depth = 2
 
-    args.save_dir = time.strftime("histories_cls_tmp/%m.%d-%H.%M.%S_pt")
-    args.save_dir += f"_{args.model}_{args.dataset}"
+    args.save_dir = time.strftime("histories_pre_cls_tmp/%m.%d-%H.%M.%S_pt")
+    args.save_dir += f"_{args.preprocessor}_{args.classifier}_{args.dataset}"
+    args.save_dir += f"_slf={args.sig_loss_factor:03d}"
     args.save_dir += f"_bs={args.batch_size:03d}"
     args.save_dir += f"_lr={args.learning_rate:.4f}"
     args.save_dir += f"_ld={args.lr_decay:.6f}"
-    if args.model == "EEGNet":
+    if args.classifier == "EEGNet":
         args.save_dir += f"_k1={args.kernel_1}_k2={args.kernel_2}"
         args.save_dir += f"_do={args.dropout:.02f}"
-    elif args.model in ["GRU", "LSTM"]:
+    elif args.classifier in ["GRU", "LSTM"]:
         args.save_dir += f"_nl={args.num_layers}_hc={args.hid_channels:03d}"
-    elif args.model == "ATCNet":
+    elif args.classifier == "ATCNet":
         args.save_dir += f"_nw={args.num_windows}"
 
     train(args)
