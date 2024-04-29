@@ -214,7 +214,7 @@ def train(args) -> Tuple[float, float, float, float]:
     backup_files(args)
 
     if args.dataset == "BcicIv2a":
-        dataset = BcicIv2aDataset(subject_id_list=[1], auto_hps=args.auto_hps)
+        dataset = BcicIv2aDataset(auto_hps=args.auto_hps)
     elif args.dataset == "PhysionetMI":
         dataset = PhysionetMIDataset(auto_hps=args.auto_hps)
     elif args.dataset == "Ofner":
