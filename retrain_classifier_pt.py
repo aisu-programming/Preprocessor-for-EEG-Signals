@@ -12,11 +12,6 @@
 
 # see hps_classifier.py for auto hyperparameter search while training
 
-# thoughts:
-# switch sig_loss_factor to cls_loss_factor?
-
-# if __name__ == "__main__":
-#     raise NotImplementedError
 
 ##### Libraries #####
 import os
@@ -237,70 +232,59 @@ def train(args) -> Tuple[float, float, float, float]:
         my_valid_dataset, args.batch_size, shuffle=True,
         pin_memory=True, drop_last=True, num_workers=args.num_workers)
 
-    preprocessor : torch.nn.Module = torch.load(args.preprocessor_weights, map_location=args.device)
-    preprocessor = preprocessor.to(args.device)
-    preprocessor.eval()
 
-    load_file : str = ""
+    cls_load_file : str = ""
+    pre_load_file : str = ""
 
     if args.classifier == "EEGNet":
-        load_file = (
+        cls_load_file = (
             "histories_cls/EEGNet_BcicIv2a_pt/" +
             "68.03%_bs=064_lr=0.0009_ld=0.999910_" +
             "k1=32_k2=32_do=0.16/best_valid_acc.pt"
         )
-        # classifier = EEGNet(
-        #     kernel_1=args.kernel_1,
-        #     kernel_2=args.kernel_2,
-        #     dropout=args.dropout,
-        #     F1=args.F1,
-        #     F2=args.F2,
-        #     D=args.D,
-        #     num_electrodes=train_inputs.shape[1],
-        #     chunk_size=train_inputs.shape[2],
-        #     num_classes=dataset.class_number).to(args.device)
-    elif args.classifier == "GRU":
-        load_file = (
-            "histories_cls/GRU_BcicIv2a_pt/" +
-            "49.28%_bs=064_lr=0.0065_ld=0.999919_nl=1_" +
-            "hc=032_do=0.16/best_valid_acc.pt"
-        )
-        # classifier = GRU(
-        #     hid_channels=args.hid_channels,
-        #     num_layers=args.num_layers,
-        #     num_electrodes=train_inputs.shape[1],
-        #     num_classes=dataset.class_number).to(args.device)
-    elif args.classifier == "LSTM":
-        load_file = (
-            "histories_cls/LSTM_BcicIv2a_pt/" +
-            "38.57%_bs=064_lr=0.0110_ld=0.999879_" +
-            "nl=3_hc=032_do=0.61/best_valid_acc.pt"
-        )
-        # classifier = LSTM(
-        #     hid_channels=args.hid_channels,
-        #     num_layers=args.num_layers,
-        #     num_electrodes=train_inputs.shape[1],
-        #     num_classes=dataset.class_number).to(args.device)
+        if args.preprocessor == "Transformer":
+            pre_load_file = (
+                "histories_pre/Transformer_EEGNet_BcicIv2a_pt/" +
+                "66.05%_slf=010_bs=064_lr=0.0016_ld=0.999911_" +
+                "nl=1_nh=06_fd=128_do=0.89/best_valid_acc.pt"
+            )
+        elif args.preprocessor == "LSTM":
+            pre_load_file = (
+                "histories_pre/LSTM_EEGNet_BcicIv2a_pt/" +
+                "68.75%_slf=070_bs=016_lr=0.0021_ld=0.999901_" +
+                "nl=1_hs=032_do=0.05/best_valid_acc.pt"
+            )
+        else: raise NotImplementedError
+
     elif args.classifier == "ATCNet":
-        load_file = (
+        cls_load_file = (
             "histories_cls/ATCNet_BcicIv2a_pt/" +
             "65.24%_bs=064_lr=0.0010_ld=0.999891_" +
             "nw=3_cps=9/best_valid_acc.pt"
         )
-        # classifier = ATCNet(
-        #     num_windows=args.num_windows,
-        #     conv_pool_size=args.conv_pool_size,
-        #     F1=args.F1,
-        #     D=args.D,
-        #     tcn_kernel_size=args.tcn_kernel_size,
-        #     tcn_depth=args.tcn_depth,
-        #     num_classes=dataset.class_number,
-        #     num_electrodes=train_inputs.shape[1],
-        #     chunk_size=train_inputs.shape[2],
-        #     ).to(args.device)
-    
+        if args.preprocessor == "Transformer":
+            pre_load_file = (
+                "histories_pre/Transformer_ATCNet_BcicIv2a_pt/" +
+                "65.09%_slf=020_bs=064_lr=0.0019_ld=0.999928_" +
+                "nl=3_nh=03_fd=128_do=0.65/best_valid_acc.pt"
+            )
+        elif args.preprocessor == "LSTM":
+            pre_load_file = (
+                "histories_pre/LSTM_ATCNet_BcicIv2a_pt/" +
+                "65.94%_slf=100_bs=064_lr=0.0051_ld=0.999894_" +
+                "nl=3_hs=032_do=0.15/best_valid_acc.pt"
+            )
+        else: raise NotImplementedError
+    else: raise NotImplementedError
+
+    preprocessor : torch.nn.Module = (
+        torch.load(pre_load_file, map_location=args.device)
+        .to(args.device)
+    )
+    preprocessor.eval()
+
     classifier : torch.nn.Module = (
-        torch.load(load_file, map_location=args.device)
+        torch.load(cls_load_file, map_location=args.device)
         .to(args.device)
     )
 
@@ -394,19 +378,12 @@ def train(args) -> Tuple[float, float, float, float]:
 
 
 ##### Execution #####
-if __name__ == "__main__": # TODO
+if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-p", "--preprocessor", type=str, default="Transformer",
+        "-p", "--preprocessor", type=str, default="LSTM",
         help="The preprocessor to be used. Options: ['LSTM', 'Transformer'].")
-    parser.add_argument(
-        "-pw", "--preprocessor_weights", type=str,
-        default="histories_pre/LSTM_ATCNet_BcicIv2a_pt/65.94%_slf=100_bs=064_lr=0.0051_ld=0.999894_nl=3_hs=032_do=0.15/best_valid_acc.pt",
-        help="The path of the weights of the preprocessor to be used.")
-    parser.add_argument(
-        "-s", "--sig_loss_factor", type=int, default=10,
-        help="The x value of `loss = x * sig_loss + cls_loss`.")
     parser.add_argument(
         "-c", "--classifier", type=str, default="EEGNet",
         help="The classifier to be trained. " + \
@@ -467,7 +444,6 @@ if __name__ == "__main__": # TODO
 
     args.save_dir = time.strftime("histories_pre_cls_tmp/%m.%d-%H.%M.%S_pt")
     args.save_dir += f"_{args.preprocessor}_{args.classifier}_{args.dataset}"
-    args.save_dir += f"_slf={args.sig_loss_factor:03d}"
     args.save_dir += f"_bs={args.batch_size:03d}"
     args.save_dir += f"_lr={args.learning_rate:.4f}"
     args.save_dir += f"_ld={args.lr_decay:.6f}"
