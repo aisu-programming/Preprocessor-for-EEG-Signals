@@ -241,42 +241,69 @@ def train(args) -> Tuple[float, float, float, float]:
     preprocessor = preprocessor.to(args.device)
     preprocessor.eval()
 
+    load_file : str = ""
+
     if args.classifier == "EEGNet":
-        classifier = EEGNet(
-            kernel_1=args.kernel_1,
-            kernel_2=args.kernel_2,
-            dropout=args.dropout,
-            F1=args.F1,
-            F2=args.F2,
-            D=args.D,
-            num_electrodes=train_inputs.shape[1],
-            chunk_size=train_inputs.shape[2],
-            num_classes=dataset.class_number).to(args.device)
+        load_file = (
+            "histories_cls/EEGNet_BcicIv2a_pt/" +
+            "68.03%_bs=064_lr=0.0009_ld=0.999910_" +
+            "k1=32_k2=32_do=0.16/best_valid_acc.pt"
+        )
+        # classifier = EEGNet(
+        #     kernel_1=args.kernel_1,
+        #     kernel_2=args.kernel_2,
+        #     dropout=args.dropout,
+        #     F1=args.F1,
+        #     F2=args.F2,
+        #     D=args.D,
+        #     num_electrodes=train_inputs.shape[1],
+        #     chunk_size=train_inputs.shape[2],
+        #     num_classes=dataset.class_number).to(args.device)
     elif args.classifier == "GRU":
-        classifier = GRU(
-            hid_channels=args.hid_channels,
-            num_layers=args.num_layers,
-            num_electrodes=train_inputs.shape[1],
-            num_classes=dataset.class_number).to(args.device)
+        load_file = (
+            "histories_cls/GRU_BcicIv2a_pt/" +
+            "49.28%_bs=064_lr=0.0065_ld=0.999919_nl=1_" +
+            "hc=032_do=0.16/best_valid_acc.pt"
+        )
+        # classifier = GRU(
+        #     hid_channels=args.hid_channels,
+        #     num_layers=args.num_layers,
+        #     num_electrodes=train_inputs.shape[1],
+        #     num_classes=dataset.class_number).to(args.device)
     elif args.classifier == "LSTM":
-        classifier = LSTM(
-            hid_channels=args.hid_channels,
-            num_layers=args.num_layers,
-            num_electrodes=train_inputs.shape[1],
-            num_classes=dataset.class_number).to(args.device)
+        load_file = (
+            "histories_cls/LSTM_BcicIv2a_pt/" +
+            "38.57%_bs=064_lr=0.0110_ld=0.999879_" +
+            "nl=3_hc=032_do=0.61/best_valid_acc.pt"
+        )
+        # classifier = LSTM(
+        #     hid_channels=args.hid_channels,
+        #     num_layers=args.num_layers,
+        #     num_electrodes=train_inputs.shape[1],
+        #     num_classes=dataset.class_number).to(args.device)
     elif args.classifier == "ATCNet":
-        classifier = ATCNet(
-            num_windows=args.num_windows,
-            conv_pool_size=args.conv_pool_size,
-            F1=args.F1,
-            D=args.D,
-            tcn_kernel_size=args.tcn_kernel_size,
-            tcn_depth=args.tcn_depth,
-            num_classes=dataset.class_number,
-            num_electrodes=train_inputs.shape[1],
-            chunk_size=train_inputs.shape[2],
-            ).to(args.device)
+        load_file = (
+            "histories_cls/ATCNet_BcicIv2a_pt/" +
+            "65.24%_bs=064_lr=0.0010_ld=0.999891_" +
+            "nw=3_cps=9/best_valid_acc.pt"
+        )
+        # classifier = ATCNet(
+        #     num_windows=args.num_windows,
+        #     conv_pool_size=args.conv_pool_size,
+        #     F1=args.F1,
+        #     D=args.D,
+        #     tcn_kernel_size=args.tcn_kernel_size,
+        #     tcn_depth=args.tcn_depth,
+        #     num_classes=dataset.class_number,
+        #     num_electrodes=train_inputs.shape[1],
+        #     chunk_size=train_inputs.shape[2],
+        #     ).to(args.device)
     
+    classifier : torch.nn.Module = (
+        torch.load(load_file, map_location=args.device)
+        .to(args.device)
+    )
+
     criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
     optimizer: torch.optim.Optimizer = \
         torch.optim.Adam(classifier.parameters(), lr=args.learning_rate)
