@@ -15,8 +15,8 @@
 # thoughts:
 # switch sig_loss_factor to cls_loss_factor?
 
-if __name__ == "__main__":
-    raise NotImplementedError
+# if __name__ == "__main__":
+#     raise NotImplementedError
 
 ##### Libraries #####
 import os
@@ -78,7 +78,7 @@ def backup_files(args: argparse.Namespace) -> None:
             record_txt.write(f"{key}={value}\n")
 
 
-def get_lr(optimizer: torch.optim.Optimizer) -> float:
+def get_lr(optimizer: torch.optim.Optimizer) -> float | None:
     for param_group in optimizer.param_groups:
         return param_group["lr"]
 
@@ -106,7 +106,7 @@ def train_epoch(
     loss_metric = Metric(50)
     acc_metric  = Metric(50)
     if cm_length != 0:
-        confusion_matrixs: np.ndarray = np.zeros((cm_length, cm_length))
+        confusion_matrixs: np.ndarray | None = np.zeros((cm_length, cm_length))
     else:
         confusion_matrixs = None
 
@@ -254,23 +254,20 @@ def train(args) -> Tuple[float, float, float, float]:
     elif args.dataset == "Ofner":
         dataset = Ofner2017Dataset(auto_hps=args.auto_hps)
 
-    preprocessor : torch.nn.Module = torch.load(args.preprocessor_weights, map_location=args.device)
-    preprocessor = preprocessor.to(args.device)
-    preprocessor.eval()
-
     train_inputs, train_truths, valid_inputs, valid_truths = \
         dataset.splitted_data_and_label()
 
-    if args.classifier in ["EEGNet", "ATCNet"]:
-        train_inputs = np.expand_dims(train_inputs, axis=1)
-        valid_inputs = np.expand_dims(valid_inputs, axis=1)
+    # if args.classifier in ["EEGNet", "ATCNet"]:
+    #     train_inputs = np.expand_dims(train_inputs, axis=1)
+    #     valid_inputs = np.expand_dims(valid_inputs, axis=1)
 
+    print("input shapes")
     print(train_inputs.shape, train_truths.shape)
     print(valid_inputs.shape, valid_truths.shape)
 
     my_train_dataset = MyMapDataset(train_inputs, train_truths)
     my_valid_dataset = MyMapDataset(valid_inputs, valid_truths)
-    
+
     my_train_dataLoader = torch.utils.data.DataLoader(
         my_train_dataset, args.batch_size, shuffle=True,
         pin_memory=True, drop_last=False,
@@ -280,6 +277,11 @@ def train(args) -> Tuple[float, float, float, float]:
         pin_memory=True, drop_last=False,
         num_workers=args.num_workers)
 
+    preprocessor : torch.nn.Module = torch.load(args.preprocessor_weights, map_location=args.device)
+    preprocessor = preprocessor.to(args.device)
+    preprocessor.eval()
+
+
     if args.classifier == "EEGNet":
         model = EEGNet(
             kernel_1=args.kernel_1,
@@ -288,7 +290,7 @@ def train(args) -> Tuple[float, float, float, float]:
             F1=args.F1,
             F2=args.F2,
             D=args.D,
-            chunk_size=train_inputs.shape[3],
+            # chunk_size=train_inputs.shape[3],
             num_electrodes=train_inputs.shape[2],
             num_classes=dataset.class_number).to(args.device)
     elif args.classifier == "GRU":
@@ -313,7 +315,8 @@ def train(args) -> Tuple[float, float, float, float]:
             tcn_depth=args.tcn_depth,
             num_classes=dataset.class_number,
             num_electrodes=train_inputs.shape[2],
-            chunk_size=train_inputs.shape[3]).to(args.device)
+            # chunk_size=train_inputs.shape[3]
+            ).to(args.device)
     
     # criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
     # optimizer: torch.optim.Optimizer = \
@@ -457,7 +460,7 @@ if __name__ == "__main__": # TODO
         help="The preprocessor to be used. Options: ['LSTM', 'Transformer'].")
     parser.add_argument(
         "-pw", "--preprocessor_weights", type=str,
-        default="histories_pre/LSTM_ATCNet_BcicIv2a_pt/84.91%_slf=100_bs=064_lr=0.0013_ld=0.999872_nl=3_hs=032_do=0.23/best_valid_acc.pt",
+        default="histories_pre/LSTM_ATCNet_BcicIv2a_pt/65.94%_slf=100_bs=064_lr=0.0051_ld=0.999894_nl=3_hs=032_do=0.15/best_valid_acc.pt",
         help="The path of the weights of the preprocessor to be used.")
     parser.add_argument(
         "-s", "--sig_loss_factor", type=int, default=10,
@@ -471,7 +474,7 @@ if __name__ == "__main__": # TODO
         help="The dataset used for training. " + \
              "Options: ['BcicIv2a', 'PhysionetMI', 'Ofner'].")
     parser.add_argument(
-        "-e", "--epochs", type=int, default=1000,
+        "-e", "--epochs", type=int, default=600,
         help="The total epochs (iterations) of training.")
     parser.add_argument(
         "-bs", "--batch_size", type=int, default=32,
