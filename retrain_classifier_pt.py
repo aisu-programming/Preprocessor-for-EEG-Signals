@@ -321,7 +321,7 @@ def train(args) -> Tuple[float, float, float, float]:
             early_stop_counter = 0
             best_valid_loss = valid_loss
             if dataset.class_number != 0:
-                plot_confusion_matrix(dataset.class_number, train_cm, 
+                plot_confusion_matrix(dataset.class_number, train_cm,
                                       f"{args.save_dir}/best_valid_loss_train_cm.png",
                                       "Train Confusion Matrix at Best Valid Loss")
                 plot_confusion_matrix(dataset.class_number, valid_cm,
@@ -385,7 +385,11 @@ if __name__ == "__main__":
         "-p", "--preprocessor", type=str, default="LSTM",
         help="The preprocessor to be used. Options: ['LSTM', 'Transformer'].")
     parser.add_argument(
-        "-c", "--classifier", type=str, default="EEGNet",
+        "-pw", "--preprocessor_weights", type=str,
+        default="histories_pre/Transformer_ATCNet_BcicIv2a_pt/65.09%_slf=020_bs=064_lr=0.0019_ld=0.999928_nl=3_nh=03_fd=128_do=0.65/best_valid_acc.pt",
+        help="The path of the weights of the preprocessor to be used.")
+    parser.add_argument(
+        "-c", "--classifier", type=str, default="ATCNet",
         help="The classifier to be trained. " + \
              "Options: ['EEGNet', 'GRU', 'LSTM', 'ATCNet'].")
     parser.add_argument(
@@ -393,16 +397,16 @@ if __name__ == "__main__":
         help="The dataset used for training. " + \
              "Options: ['BcicIv2a', 'PhysionetMI', 'Ofner'].")
     parser.add_argument(
-        "-e", "--epochs", type=int, default=600,
+        "-e", "--epochs", type=int, default=1000,
         help="The total epochs (iterations) of training.")
     parser.add_argument(
-        "-bs", "--batch_size", type=int, default=32,
+        "-bs", "--batch_size", type=int, default=64,
         help="The batch size of training input.")
     parser.add_argument(
-        "-lr", "--learning_rate", type=float, default=0.08,
+        "-lr", "--learning_rate", type=float, default=0.0010230258412630001,
         help="The initial learning rate of the optimizer for training.")
     parser.add_argument(
-        "-ld", "--lr_decay", type=float, default=0.99987,
+        "-ld", "--lr_decay", type=float, default=0.999891140995017,
         help="The decay rate of learning rate in each step of training.")
     parser.add_argument(
         "--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu",
@@ -426,8 +430,8 @@ if __name__ == "__main__":
 
     if args.classifier == "EEGNet":
         args.kernel_1 = 32
-        args.kernel_2 = 16
-        args.dropout = 0.5
+        args.kernel_2 = 32
+        args.dropout = 0.15841594025682731
         args.F1 = 8
         args.F2 = 16
         args.D = 2
@@ -436,7 +440,7 @@ if __name__ == "__main__":
         args.hid_channels = 64
     elif args.classifier == "ATCNet":
         args.num_windows = 3
-        args.conv_pool_size = 7
+        args.conv_pool_size = 9
         args.F1 = 16
         args.D = 2
         args.tcn_kernel_size = 4
@@ -453,6 +457,6 @@ if __name__ == "__main__":
     elif args.classifier in ["GRU", "LSTM"]:
         args.save_dir += f"_nl={args.num_layers}_hc={args.hid_channels:03d}"
     elif args.classifier == "ATCNet":
-        args.save_dir += f"_nw={args.num_windows}"
+        args.save_dir += f"_nw={args.num_windows}_cps={args.conv_pool_size}"
 
     train(args)
